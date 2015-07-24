@@ -1,0 +1,21 @@
+*{
+	margin: 0;
+	padding: 0;
+}
+#d3container {
+	position: absolute;
+	overflow: hidden;
+	width: 100%;
+	height: 100%;
+	background: white;
+}
+svg {
+	position: absolute;
+	border: 1px solid green;
+}
+svg .line {
+	z-index: 0;
+}
+svg .point {
+	z-index: 999;
+}
