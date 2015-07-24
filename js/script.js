@@ -8,7 +8,7 @@ var graph3d = (function() {
 	var currz = 0;
 
 	var zoom = 1.0;
-	d3.json("../data.json", function(json) {
+	d3.json("data.json", function(json) {
     	console.log(json);
 	})
 	
