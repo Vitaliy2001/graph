@@ -103,7 +103,7 @@ var graph3d = (function() {
 
 		svg.append('path')
 			.attr('d','M'+c1[0]+' '+c1[1]+'L'+p1t[0]+' '+p1t[1])
-			.attr('stroke','blue')
+			.attr('stroke','yellow')
 			.attr('points', ''+c[0]+' '+c[1]+' '+c[2]+' '+p1[0]+' '+p1[1]+' '+p1[2])
 			.attr('class', 'line')
 			
