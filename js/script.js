@@ -9,6 +9,7 @@ var graph3d = (function() {
 
 	var zoom = 1.0;
 
+	console.log(JSON.parse("../data.json"));
 	
 	function toRadians (angle) 
 	{
