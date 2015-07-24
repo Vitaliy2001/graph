@@ -1,50 +1,27 @@
 var graph3d = (function() {
 	'use strict';
-	var SvgHeight = 500;
-	var SvgWidth = 500;
 
-	var currx = 0;
-	var curry = 0;
-	var currz = 0;
+	var SvgHeight = 500; //высота полотна
+	var SvgWidth = 500; //ширина полотна
 
-	var zoom = 1.0;
-	d3.json("data.json", function(as) {
-    	console.log(as);
-	})
+	var currx = 0; //поворот по х в градусах
+	var curry = 0; //поворот по у
+	var currz = 0; //поворот по з
+
+	var shiftx = 0;
+	var shifty = 0;
+	var shiftz = 0;
+
+	var mousePosX = 0;
+	var mousePosY = 0;
+	var isDown = false;
+ 
+	var zoom = 1.0; //значение приближения - отдаления
+	
 	
 	function toRadians (angle) 
 	{
   		return angle * (Math.PI / 180);
-	}
-	function Transform1(x,y,z,rx,ry)
-	{
-		var F = toRadians(rx);	var F1 = toRadians(ry);
-		var cosF = Math.cos(F);
-		var sinF = Math.sin(F);
-		var cosO = Math.cos(F1);
-		var sinO = Math.sin(F1);
-
-		var xmin = 0; var xmax = SvgHeight;
-		var ymin = 0; var ymax = SvgWidth;
-		var zmin = 0; var zmax = 10;
-
-		var xd = (xmin + xmax)/2;
-		var yd = (ymin + ymax)/2;
-		var zd = (zmin + zmax)/2;
-
-		var x1 = x*zoom;
-		var y1 = -y*zoom;
-		var z1 = z*zoom;
-
-		var x2 = x1*cosF - y1*sinF + z1*0;
-		var y2 = x1*sinF + y1*cosF + z1*0;
-		var z2 = x1*0 + y1*0 + z1;
-
-		var x3 = x2*cosO - y2*0 - z2*sinO;
-		var y3 = x2*0 + y2*1 + z2*0;
-		var z3 = x2*sinO + y2*0 + z2*cosO;
-		
-		return [x3+xd,y3+yd,z3];
 	}
 	function Transform(x,y,z,rx,ry,rz)
 	{
@@ -65,9 +42,9 @@ var graph3d = (function() {
 		var yd = (ymin + ymax)/2;
 		var zd = (zmin + zmax)/2;
 
-		var x1 = x*zoom;
-		var y1 = -y*zoom;
-		var z1 = z*zoom;
+		var x1 = x*zoom + shiftx;
+		var y1 = -y*zoom + shifty;
+		var z1 = z*zoom + shiftz;
 
 		var x2 = x1*cosC - y1*sinC + z1*0;
 		var y2 = x1*sinC + y1*cosC + z1*0;
@@ -102,6 +79,14 @@ var graph3d = (function() {
 				.attr('id','GraphSvg')
 				.attr('height',SvgHeight)
 				.attr('width',SvgWidth)
+				.on('mousedown',function() {
+					console.log('down');
+					isDown = true;
+				})
+				.on('mouseup',function() {
+					console.log('up');
+					isDown = false;
+				})
 
 		svg.append('path')
 			.attr('d','M'+c1[0]+' '+c1[1]+'L'+p1t[0]+' '+p1t[1])
@@ -120,6 +105,27 @@ var graph3d = (function() {
 			.attr('stroke','red')
 			.attr('points', ''+c[0]+' '+c[1]+' '+c[2]+' '+p3[0]+' '+p3[1]+' '+p3[2])
 			.attr('class', 'line')
+	
+		document.getElementById("d3container").addEventListener("mousemove", function(e){
+			e.preventDefault();
+			if (isDown)
+			{
+				var dx = (mousePosX - e.clientX)/2;
+				var dy = (mousePosY - e.clientY)/2;
+
+				RotateScene(dy,dx,dy)
+
+				mousePosX = e.clientX;
+				mousePosY = e.clientY;
+			}
+		})
+
+		document.getElementById("d3container").addEventListener("mousedown", function(e){
+				mousePosX = e.clientX;
+				mousePosY = e.clientY;
+				isDown = true;
+			}
+		)
 	};
 	function DrawPoint(x,y,z)
 	{
@@ -229,15 +235,22 @@ var graph3d = (function() {
 	}
 	function RotateScene(rx,ry,rz)
 	{
-		currx = rx;
-		curry = ry;
-		currz = rz;
+		currx = currx + rx;
+		curry = curry + ry;
+		currz = currz + rz;
 		RotateLines();
 		RotatePoints();
 	}
 	function Zoom(z)
 	{
 		zoom = z;
+		RotateScene(currx,curry,currz);
+	}
+	function Shift(x,y,z)
+	{
+		shiftx = x;
+		shifty = y;
+		shiftz = z;
 		RotateScene(currx,curry,currz);
 	}
 
@@ -251,8 +264,32 @@ var graph3d = (function() {
 		DrawLine:DrawLine,
 		DrawGraphic:DrawGraphic,
 		DrawPolygon:DrawPolygon,
-		Zoom:Zoom
+		Zoom:Zoom,
+		Shift:Shift
 	};
 }());
 
 graph3d.DrawAxis();
+
+$.getJSON( "js/data.json", function( data ) {
+	var d = [];
+	var maxD = 0;
+	for (var i = 0; i < data.length; i += 1)
+	{
+		var text = data[i].expiration;
+		var date = new Date(text.replace(/(\d+)-(\d+)-(\d+)/, '$2/$3/$1'));
+
+		if (date > maxD || i == 0)
+			maxD = date;
+
+		d.push([data[i].implied_volatility, date, data[i].moneyness]);
+	}
+	
+	for (var i = 0; i < d.length; i += 1 )
+	{
+		d[i][1] = (maxD - d[i][1])/(1000*3600*24)
+	}
+
+	graph3d.DrawGraphic(d);
+})
+
