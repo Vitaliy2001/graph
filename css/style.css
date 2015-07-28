@@ -19,3 +19,6 @@ svg .line {
 svg .point {
 	z-index: 999;
 }
+svg .polygon{
+	z-index: 500;
+}
