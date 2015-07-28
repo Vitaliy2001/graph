@@ -68,7 +68,7 @@ var graph3d = (function() {
 	}
 	function ColorFunction(y)
 	{
-		var c=d3.hsl( y, 0.5, 0.5).rgb();
+		var c=d3.hsl( y*1.5, 0.5, 0.5).rgb();
 		return ("rgb("+parseInt(c.r)+","+parseInt(c.g)+","+parseInt(c.b)+")")
 	}
 	function DrawAxis()
@@ -185,6 +185,7 @@ var graph3d = (function() {
 	{
 		var d = '';	var d1 = '';
 		var p;	var pt;
+		points.push(points[0]);
 		var maxy = 0;
 		for (var i = 0; i < points.length; i += 1)
 		{
@@ -276,14 +277,15 @@ var graph3d = (function() {
 		for (var i = 0; i < lines.length; i += 1)
 		{	
 			var a;
-			if (Math.sin(toRadians(curry)) < 0)
+			if (Math.sin(toRadians(curry)) > 0)
 				var a = lines[i];
 			else
 				var a = lines[lines.length-i-1];
 
 			var points = a.getAttribute('points').split(' ');
-			a = lines[i]
+			a = lines[i];
 			var d = '';
+			var MaxY = 0;
 			for (var j = 0; j < points.length; j += 3)
 			{
 				var p = Transform(points[j],points[j+1],points[j+2])
@@ -293,8 +295,12 @@ var graph3d = (function() {
 				else
 					d += 'L';
 				d += p[0] + ' ' + p[1];
+
+				if (points[j+2] > MaxY)
+					MaxY = points[j+1];
 			}
-			a.setAttribute('d', d);			
+			a.setAttribute('d', d);
+			a.setAttribute('fill',ColorFunction(MaxY))	
 		}
 	}
 	function RotateScene(rx,ry,rz)
@@ -471,11 +477,15 @@ var graph3d = (function() {
 			dd1.push(dd2.reverse());
 		}
 		Data = dd1;
-
 	}
 	function DrawData()
 	{
-
+		for (var i = 1; i < Data.length; i += 1)
+			for (var j = 1; j < Data[i].length; j +=1 )
+				DrawPolygon([ Data[i][j],Data[i][j-1],Data[i-1][j-1],Data[i-1][j]  ]);
+		for (var i = 0; i < Data.length; i += 1)
+			for (var j = 0; j < Data[i].length; j +=1 )
+				DrawPoint(Data[i][j][0],Data[i][j][1],Data[i][j][2]);
 	}
 
 
@@ -491,7 +501,8 @@ var graph3d = (function() {
 		Zoom:Zoom,
 		Shift:Shift,
 		TransformData:TransformData,
-		DrawCharts:DrawCharts
+		DrawCharts:DrawCharts,
+		DrawData:DrawData
 	};
 }());
 
@@ -521,4 +532,5 @@ $.getJSON( "js/data.json", function( data ) {
 			data = d;
 
 			graph3d.TransformData(data);
+			graph3d.DrawData();
 		})	
