@@ -2,7 +2,7 @@ var graph3d = (function() {
 	'use strict';
 
 	var SvgHeight = 500; //высота полотна
-	var SvgWidth = 500; //ширина полотна
+	var SvgWidth = 800; //ширина полотна
 
 	var currx = 0; //поворот по х в градусах
 	var curry = 0; //поворот по у
@@ -40,8 +40,8 @@ var graph3d = (function() {
 	}
 	function Transform(x,y,z)
 	{
-		var xmin = 0; var xmax = SvgHeight;
-		var ymin = 0; var ymax = SvgWidth;
+		var xmin = 0; var xmax = SvgWidth;
+		var ymin = 0; var ymax = SvgHeight;
 		var zmin = 0; var zmax = 10;
 
 		var xd = (xmin + xmax)/2;
@@ -77,41 +77,13 @@ var graph3d = (function() {
 	}
 	function DrawAxis()
 	{
-		var c = [0,0,0];
 		
-		var p1 = [250,0,0];
-		var p2 = [0,250,0];
-		var p3 = [0,0,250];
-
-		var c1 = Transform(0,0,0); 
-		var p1t = Transform(p1[0],p1[1],p1[2]);
-		var p2t = Transform(p2[0],p2[1],p2[2]);
-		var p3t = Transform(p3[0],p3[1],p3[2]);
-
 		var svg = d3.select('#d3container')
 				.append('svg')
 				.attr('id','GraphSvg')
 				.attr('height',SvgHeight)
 				.attr('width',SvgWidth)
 
-		svg.append('path')
-			.attr('d','M'+c1[0]+' '+c1[1]+'L'+p1t[0]+' '+p1t[1])
-			.attr('stroke','blue')
-			.attr('points', ''+c[0]+' '+c[1]+' '+c[2]+' '+p1[0]+' '+p1[1]+' '+p1[2])
-			.attr('class', 'line')
-		
-		svg.append('path')
-			.attr('d','M'+c1[0]+' '+c1[1]+'L'+p2t[0]+' '+p2t[1])
-			.attr('stroke','green')
-			.attr('points', ''+c[0]+' '+c[1]+' '+c[2]+' '+p2[0]+' '+p2[1]+' '+p2[2])
-			.attr('class', 'line')
-
-		svg.append('path')
-			.attr('d','M'+c1[0]+' '+c1[1]+'L'+p3t[0]+' '+p3t[1])
-			.attr('stroke','red')
-			.attr('points', ''+c[0]+' '+c[1]+' '+c[2]+' '+p3[0]+' '+p3[1]+' '+p3[2])
-			.attr('class', 'line')
-		
 		document.getElementById("d3container").addEventListener("mousemove", function(e){
 			e.preventDefault();
 			if (isDown)//Поворот мышью
@@ -154,7 +126,12 @@ var graph3d = (function() {
 				console.log(this.getAttribute('x1') +' '+ this.getAttribute('y1') + ' ' + this.getAttribute('z1'));
 			})
 	}
-	function DrawLine(points)
+	/**
+	 * рисование линии при наведении на которую будет отображатся ее проекция
+	 * @param {[array[][][] ]} points [точки по которым строится линия]
+	 * @param {[string]} ID [lineOZ или lineOX]
+	 */
+	function DrawLine(points,ID)
 	{
 		var d = '';	var d1 = '';
 		var p;	var pt;
@@ -170,23 +147,34 @@ var graph3d = (function() {
 			d1 += p[0] + ' ' + p[1] + ' ' + p[2] + ' '; 
 		}
 		var svg = d3.select('#GraphSvg');
-		var ret = svg.append('path')
+		var line =	svg.append('path')
 			.attr('d',d)
 			.attr('stroke','black')
 			.attr('stroke-width',3)
 			.attr('points', d1.trim() )
 			.attr('class', 'line')
 			.attr('fill','none')
-			.on('mouseover', function(){
+		if (ID == 'LineOX')
+		{
+			line.on('mouseover', function(){
 				this.setAttribute('stroke', 'yellow');
 				DrawGraphic(this)
 			})
 			.on('mouseout', function(){
 				this.setAttribute('stroke', 'black')
 			})
-			.on('mouseclick',function(){
+		}
+		if (ID == 'LineOZ')
+		{
+			line.on('mouseover', function(){
+				this.setAttribute('stroke', 'blue');
 				DrawGraphic(this)
 			})
+			.on('mouseout', function(){
+				this.setAttribute('stroke', 'black')
+			})
+		}
+			line.attr('id',ID)
 	}
 	function DrawPolygon(points,cl)
 	{
@@ -232,6 +220,35 @@ var graph3d = (function() {
 		svg = DrawPolygon([[MINX-ChartShift,MINY,MINZ],[MINX-ChartShift,MINY,MAXZ],[MINX-ChartShift,MAXY,MAXZ],[MINX-ChartShift,MAXY,MINZ]],'chart');
 		svg.attr('id', 'chartOY');
 		svg.attr('fill','grey');
+
+		//создание линий, которые будут проекциями на чарты
+		var p = [Transform(MINX,MINY,MINZ-ChartShift),Transform(MINX,MINY,MINZ-ChartShift)]
+		var points = ''+MINX+' '+MINY+' '+(MINZ-ChartShift)+' '+MINX+' '+MINY+' '+(MINZ-ChartShift);
+		var svg = d3.select('#GraphSvg');
+			  svg.append('path')
+				.attr('d','M'+p[0][0]+' '+p[0][1]+'L'+p[1][0]+' '+p[1][1])
+				.attr('stroke','black')
+				.attr('stroke-width',1)
+				.attr('points', points)
+				.attr('id', 'GraphOZ')
+				.attr('fill','none')
+				.attr('class','line')
+			svg.append('path')
+				.attr('d','M'+p[0][0]+' '+p[0][1]+'L'+p[1][0]+' '+p[1][1])
+				.attr('stroke','black')
+				.attr('stroke-width',1)
+				.attr('points', points)
+				.attr('id', 'GraphOX')
+				.attr('fill','none')
+				.attr('class','line')
+			svg.append('path')
+				.attr('d','M'+p[0][0]+' '+p[0][1]+'L'+p[1][0]+' '+p[1][1])
+				.attr('stroke','black')
+				.attr('stroke-width',1)
+				.attr('points', points)
+				.attr('id', 'GraphOY')
+				.attr('fill','none')
+				.attr('class','line')
 	}
 	function RotatePoints()
 	{
@@ -302,41 +319,56 @@ var graph3d = (function() {
 	}
 	function DrawGraphic(obj)
 	{
-		var points = obj.getAttribute('points').split(' ');
-		var d = '';
-		var d1 = '';
-		var p;	var pt;
-		for (var i = 0; i < points.length; i += 3)
+		if (obj.id == 'LineOZ')
 		{
-			p = [ MINX - ChartShift, points[i+1], points[i+2] ];
-			pt = Transform( p[0],p[1],p[2]);
-			if (i == 0)
-				d = 'M';
-			else
-				d += 'L';
-				d += pt[0] + ' ' + pt[1];
-			d1 += p[0] + ' ' + p[1] + ' ' + p[2] + ' '; 
-		}
-		console.log(d);
-		var graph = document.getElementById('GraphOZ');
-		if ( graph == null ) 
-		{
-			var svg = d3.select('#GraphSvg');
-			  svg.append('path')
-				.attr('d',d)
-				.attr('stroke','black')
-				.attr('stroke-width',1)
-				.attr('points', d1.trim() )
-				.attr('id', 'GraphOZ')
-				.attr('fill','none')
-				.attr('class','line')
-		}
-		else
-		{
+			var points = obj.getAttribute('points').split(' ');
+			var graph = document.getElementById('GraphOZ')
+			var d = '';
+			var d1 = '';
+			var p;	var pt;
+			for (var i = 0; i < points.length; i += 3)
+			{
+				if (sinB > 0)
+					p = [ MINX - ChartShift, points[i+1], points[i+2] ];
+				else
+					p = [ MAXX + ChartShift, points[i+1], points[i+2] ];
+				pt = Transform( p[0],p[1],p[2]);
+				if (i == 0)
+					d = 'M';
+				else
+					d += 'L';
+					d += pt[0] + ' ' + pt[1];
+				d1 += p[0] + ' ' + p[1] + ' ' + p[2] + ' '; 
+			}
 			graph.setAttribute('d',d);
 			graph.setAttribute('points', d1);
+			graph.setAttribute('stroke', 'blue')
 		}
-
+		if (obj.id == 'LineOX')
+		{
+			var points = obj.getAttribute('points').split(' ');
+			var graph = document.getElementById('GraphOX')
+			var d = '';
+			var d1 = '';
+			var p;	var pt;
+			for (var i = 0; i < points.length; i += 3)
+			{
+				if (cosB > 0)
+					p = [ points[i], points[i+1], MINZ - ChartShift ];
+				else
+					p = [ points[i], points[i+1], MAXZ + ChartShift ];
+				pt = Transform( p[0],p[1],p[2]);
+				if (i == 0)
+					d = 'M';
+				else
+					d += 'L';
+					d += pt[0] + ' ' + pt[1];
+				d1 += p[0] + ' ' + p[1] + ' ' + p[2] + ' '; 
+			}
+			graph.setAttribute('d',d);
+			graph.setAttribute('points', d1);
+			graph.setAttribute('stroke', 'yellow')
+		}
 	}
 	function RotateCharts()
 	{
@@ -357,38 +389,37 @@ var graph3d = (function() {
 			p = [Transform(MAXX+ChartShift,MINY,MINZ),Transform(MAXX+ChartShift,MINY,MAXZ),Transform(MAXX+ChartShift,MAXY,MAXZ),Transform(MAXX+ChartShift,MAXY,MINZ)];
 		Chart.attr('d','M'+p[0][0]+' '+p[0][1]+'L'+p[1][0]+' '+p[1][1]+'L'+p[2][0]+' '+p[2][1]+'L'+p[3][0]+' '+p[3][1]+'L'+p[0][0]+' '+p[0][1]);
 
-
 		Chart =  d3.select('#chartOZ');
 		p = [Transform(MINX,MINY-ChartShift,MINZ),Transform(MAXX,MINY-ChartShift,MINZ),Transform(MAXX,MINY-ChartShift,MAXZ),Transform(MINX,MINY-ChartShift,MAXZ)];
 		Chart.attr('d','M'+p[0][0]+' '+p[0][1]+'L'+p[1][0]+' '+p[1][1]+'L'+p[2][0]+' '+p[2][1]+'L'+p[3][0]+' '+p[3][1]+'L'+p[0][0]+' '+p[0][1]);
 		
-		/*var svg = d3.select('svg');
-		var lines = GraphSvg.getElementsByClassName('chart');
+		var Graph = d3.select('#GraphOX');
+		p = Graph.attr('points').split(' ');
+		var points = '';
+		if (cosB > 0)
+			for (var i = 2; i < p.length; i +=3 )
+				p[i] = MINZ - ChartShift;
+		else
+			for (var i = 2; i < p.length; i +=3 )
+				p[i] = MAXZ + ChartShift;
+		for (var i = 0; i < p.length; i +=1 )
+			points += p[i]+' ';
+		console.log(points);
+		Graph.attr('points',points.trim());
 
-		for (var i = 0; i < lines.length; i += 1)
-		{	
-			var a;
-			if (Math.sin(toRadians(curry)) > 0)
-				var a = lines[i];
-			else
-				var a = lines[lines.length-i-1];
-
-			var points = a.getAttribute('points').split(' ');
-			a = lines[i];
-
-			var d = '';
-			for (var j = 0; j < points.length; j += 3)
-			{
-				var p = Transform(points[j],points[j+1],points[j+2])
-				
-				if (j == 0)
-					d = 'M';
-				else
-					d += 'L';
-				d += p[0] + ' ' + p[1];
-			}
-			a.setAttribute('d', d);
-		}*/
+		Graph = d3.select('#GraphOZ');
+		p = Graph.attr('points').split(' ');
+		var points = '';
+		if (sinB > 0)
+			for (var i = 0; i < p.length; i +=3 )
+				p[i] = MINX - ChartShift;
+		else
+			for (var i = 0; i < p.length; i +=3 )
+				p[i] = MAXX + ChartShift;
+		for (var i = 0; i < p.length; i +=1 )
+			points += p[i]+' ';
+		console.log(points);
+		Graph.attr('points',points.trim());
 	}
 	function RotateScene(rx,ry,rz)
 	{
@@ -495,12 +526,22 @@ var graph3d = (function() {
 		for (var i = 1; i < Data.length; i += 1)
 			for (var j = 1; j < Data[i].length; j +=1 )
 				DrawPolygon([ Data[i][j],Data[i][j-1],Data[i-1][j-1],Data[i-1][j]  ],'polygon');
+		
 		for (var i = 0; i < Data.length; i += 1)
 		{
-			DrawLine(Data[i]);
-			for (var j = 0; j < Data[i].length; j +=1 )
-				DrawPoint(Data[i][j][0],Data[i][j][1],Data[i][j][2]);
+			DrawLine(Data[i],'LineOZ');
+				
 		}
+		for (var i = 0; i < Data[0].length; i += 1)
+		{
+			var p = [];
+			for (var j = 0; j < Data.length; j += 1)
+				p.push(Data[j][i]);
+			DrawLine(p,'LineOX');
+		}
+		for (var i = 0; i < Data.length; i += 1)
+			for (var j = 0; j < Data[i].length; j += 1)
+				DrawPoint(Data[i][j][0],Data[i][j][1],Data[i][j][2]);
 	}
 
 
