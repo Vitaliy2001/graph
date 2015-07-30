@@ -17,8 +17,10 @@ var graph3d = (function() {
 	var isDown = false;
 
 	var cosA = 1, sinA = 0, cosB = 1, sinB = 0, cosC = 1, sinC = 0;
-	var MAXX, MAXY, MAXZ, MINX, MINY, MINZ;
+	var MAXX = 1, MAXY = 1, MAXZ = 1, MINX = 1, MINY = 1, MINZ = 1;
 	var ChartShift = 40
+
+	var DZ = 7; //Количество градаций по оси Z
  
 	var zoom = 1.3; //значение приближения - отдаления
 
@@ -68,7 +70,7 @@ var graph3d = (function() {
 		return [x4 + xd + shiftx + shift, y4 + yd + shifty, z4 + shiftz + shift];
 	}
 	function ColorFunction(y) {
-		var c=d3.hsl( y*1.5, 0.5, 0.5).rgb();
+		var c=d3.hsl( y, 0.5, 0.5).rgb();
 		return ("rgb("+parseInt(c.r)+","+parseInt(c.g)+","+parseInt(c.b)+")")
 	}
 	function DrawAxis() {	
@@ -101,10 +103,10 @@ var graph3d = (function() {
 			}
 		)
 	}
-	function DrawPoint(x,y,z) {
+	function DrawPoint(x,y,z,rr) {
 		var p = Transform(x,y,z);
 		var svg = d3.select('#GraphSvg')
-			.append('circle')
+		var ret = 	svg.append('circle')
 			.attr('cx',p[0])
 			.attr('cy',p[1])
 			.attr('x1',x)
@@ -113,10 +115,21 @@ var graph3d = (function() {
 			.attr('class','point')
 			.attr('fill','yellow')
 			.attr('r',5)
-			.attr('fill',ColorFunction(y))
+
 			.on('mouseover',function() {
 				console.log(this.getAttribute('x1') +' '+ this.getAttribute('y1') + ' ' + this.getAttribute('z1'));
 			})
+		if (rr == 'real')
+		{
+			ret.attr('fill',ColorFunction(y))
+				.attr('real','real')
+		}
+		else
+		{
+			ret.attr('fill','yellow')
+				.attr('real','unreal')
+		}
+		return ret;
 	}
 	/**
 	 * рисование линии при наведении на которую будет отображатся ее проекция
@@ -414,9 +427,9 @@ var graph3d = (function() {
 		cosB = Math.cos(B);		sinB = Math.sin(B);
 		cosC = Math.cos(C);		sinC = Math.sin(C);
 		
-		//RotateCharts();
-		//RotatePolygons();
-		//RotateLines();
+		RotateCharts();
+		RotatePolygons();
+		RotateLines();
 		RotatePoints();
 	}
 	function TransformData(arg) {
@@ -525,8 +538,7 @@ var graph3d = (function() {
 		
 		for (var k = 0; k < Dates.length; k += 1 )// распределение выборки по датам
 			d[k] = arg.filter( function(item){ if (item[0] == Dates[k]) return item; });
-
-		for (var k = 0; k < Dates.length; k += 1 )// распределение выборки по датам
+		for (var k = 0; k < Dates.length; k += 1 )// массивов по оси Z
 			d[k] = d[k].sort( function(a,b){return a[2] - b[2]});
 
 		
@@ -538,30 +550,95 @@ var graph3d = (function() {
 			}
 		console.log(MaxZ+' '+MinZ);
 
+		var dd = [];
+		var Dz = (MaxZ - MinZ)/DZ;
+		var corell = 100;
 
-
-		console.log(d);
 		for (var i = 0; i < d.length; i += 1) {
-			var k = d[i].length - 1;
-			if (d[i][k][2] < MaxZ) {
-				var dy = d[i][k][1] - d[i][k - 1][1];
-				var dz = d[i][k][2] - d[i][k - 1][2];
-				console.log(d[i][k]);
-				console.log(d[i][k-1]);
-				
-				var ddz = MaxZ - d[i][k][2];
-				var ddy = d[i][k][1] + (dy/dz)*ddz;
+			var ddd = [];
+			for (var k = 0; k <= DZ; k +=1) {
+				var MinCorell = 100;
+				var index;
+				var CurCorell;
+				for (var j = 0; j < d[i].length; j += 1) {
+					CurCorell = Math.abs( (d[i][j][2] - MinZ) - Dz*k )
+					if (CurCorell < MinCorell) {
+						MinCorell = CurCorell;
+						index = j;
+					}
+				}
+				if ( (d[i][index][2] - MinZ) == Dz*k) {
+					var p = [d[i][index][0],d[i][index][1],d[i][index][2],'real']
+					ddd.push(p);	
+				}
+				else
+					if ( Dz*k > (d[i][index][2] - MinZ) && (index == (d[i].length - 1)) ) {
+						var dz1 = d[i][index][2] - d[i][index-1][2];
+						var dy1 = d[i][index][1] - d[i][index-1][1];
 
-				var p = d[i][k].concat();
-				p[1] = ddy;
-				p[2] = MaxZ;
-				d[i].push(p);
+						var dz2 = Dz*k - d[i][index-1][2];
+						var dy2 = (dy1*dz2)/dz1;
+
+						var p = [ d[i][index-1][0], d[i][index-1][1] + dy2, Dz*k + MinZ, 'unreal'];
+						ddd.push(p)
+					}
+					else
+					if ( Dz*k < (d[i][index][2] - MinZ) && (index == 0) ) {
+						var z3 = d[i][index+1][2];
+						var y3 = d[i][index+1][1];
+
+						var z2 = d[i][index][2];
+						var y2 = d[i][index][1];
+
+						var kk = (y3-y2)/(z3-z2)
+
+						var z1 = Dz*k + MinZ;
+						var y1 = y2 - kk*(z2-z1);
+
+						var p =[ d[i][index][0], y1, z1, 'unreal'];
+						ddd.push(p);
+					}
+					else
+						if ( Dz*k < (d[i][index][2] - MinZ) && (index > 0)) {
+							var dz = d[i][index][2] - d[i][index-1][2];
+							var dy = d[i][index][1] - d[i][index-1][1];
+
+							var z1 = Dz*k - d[i][index-1][2];
+							var y1 = d[i][index-1][1] + (z1*dy)/dz;
+
+							var p = [ d[i][index-1][0], y1, Dz*k + MinZ, 'real'];
+							ddd.push(p)
+						}
+						else
+							if ( Dz*k > (d[i][index][2] - MinZ) && (index < d[i].length -1)) {
+								var dz = d[i][index+1][2] - d[i][index][2];
+								var dy = d[i][index+1][1] - d[i][index][1];
+
+								var z1 = Dz*k - d[i][index][2];
+								var y1 = d[i][index][1] + (z1*dy)/dz;
+
+								var p = [ d[i][index-1][0], y1, Dz*k + MinZ, 'real'];
+								ddd.push(p)
+							}
 			}
+			dd.push(ddd);
 		}
+		Data = dd;
 
-				for (var i = 0; i < d.length; i += 1)
-			for (var j = 0; j < d[i].length; j += 1)
-				DrawPoint(d[i][j][0],d[i][j][1],d[i][j][2])
+		MAXX = Data[0][0][0]; MAXY = Data[0][0][1]; MAXZ = Data[0][0][2];
+		MINX = MAXX; MINY = MAXY; MINZ = MAXZ;
+		
+		for (var i = 0; i < Data.length; i += 1)
+			for (var j = 0; j < Data[i].length; j += 1) {
+				if ( MAXX < Data[i][j][0])	MAXX = Data[i][j][0];
+				if ( MINX > Data[i][j][0])	MINX = Data[i][j][0];
+
+				if ( MAXY < Data[i][j][1])	MAXY = Data[i][j][1];
+				if ( MINY > Data[i][j][1])	MINY = Data[i][j][1];
+
+				if ( MAXZ < Data[i][j][2])	MAXZ = Data[i][j][2];
+				if ( MINZ > Data[i][j][2])	MINZ = Data[i][j][2];
+			}
 	}
 	function DrawData() {
 		for (var i = 1; i < Data.length; i += 1)
@@ -579,7 +656,7 @@ var graph3d = (function() {
 		}
 		for (var i = 0; i < Data.length; i += 1)
 			for (var j = 0; j < Data[i].length; j += 1)
-				DrawPoint(Data[i][j][0],Data[i][j][1],Data[i][j][2]);
+				DrawPoint(Data[i][j][0],Data[i][j][1],Data[i][j][2],Data[i][j][3]);
 	}
 	function DrawRealData() {
 		for (var i = 0; i < DATA.length; i+=1)
@@ -614,8 +691,8 @@ var graph3d = (function() {
 			graph3d.DrawAxis();
 			graph3d.TransformData1(d);
 			//graph3d.TransformData(d);
-			//graph3d.DrawCharts();
-			//graph3d.DrawData();
+			graph3d.DrawCharts();
+			graph3d.DrawData();
 			//graph3d.DrawRealData();
 			//graph3d.DrawPoint(0,0,0);
 			console.log(MAXX);
@@ -641,4 +718,4 @@ var graph3d = (function() {
 	};
 }());
 
-graph3d.GetData('js/calls.json');
+graph3d.GetData('js/puts1.json');

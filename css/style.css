@@ -22,3 +22,6 @@ svg .point {
 svg .polygon{
 	z-index: 500;
 }
+#d3container {
+
+}
