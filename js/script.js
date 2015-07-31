@@ -8,34 +8,27 @@ var graph3d = (function() {
 	var curry = 0; //поворот по у
 	var currz = 0; //поворот по з
 
-	var shiftx = -150;
-	var shifty = 100;
-	var shiftz = 0;
-
-	var mousePosX = 0;
-	var mousePosY = 0;
+	var mousePosX = 0; //Текущая позиция мыши
+	var mousePosY = 0; //Текущая позиция мыши
 	var isDown = false;
 
 	var cosA = 1, sinA = 0, cosB = 1, sinB = 0, cosC = 1, sinC = 0;
 	var MAXX = 1, MAXY = 1, MAXZ = 1, MINX = 1, MINY = 1, MINZ = 1;
 	var ChartShift = 40
+	var cgy = 6;//количество градаций на оси OY
+	var cgz = 7;//количество градаций на оси OZ
+	var cgx = 10;//количество градаций на оси OX
 
-	var DZ = 7; //Количество градаций по оси Z
+	var DZ = 4; //Количество градаций по оси Z
  
-	var zoom = 1.3; //значение приближения - отдаления
+	var zoom = 1.2; //значение приближения - отдаления
 
-	var DATA = []; //Данные не тронутые, вытянутые из json
+	var DATA = []; //Данные не тронутые злым гением, вытянутые из json
 	var Data = []; //Данные, измененные для прорисовки
 	
 	function toRadians (angle) { return angle * (Math.PI / 180); }
 	function Zoom(z) {
 		zoom = z;
-		RotateScene(currx,curry,currz);
-	}
-	function Shift(x,y,z) {
-		shiftx = x;
-		shifty = y;
-		shiftz = z;
 		RotateScene(currx,curry,currz);
 	}
 	function Transform(x,y,z) {
@@ -47,11 +40,13 @@ var graph3d = (function() {
 		var yd = (ymin + ymax)/2;
 		var zd = (zmin + zmax)/2;
 
-		var shift = 150;
+		var shiftx = xd ;
+		var shifty = yd ;
+		var shiftz = 0;
 
-		var x1 = x*zoom - shift;
-		var y1 = -y*zoom ;
-		var z1 = z*zoom - shift;
+		var x1 = x - (MAXX - MINX)/2;
+		var y1 = -y + (MAXY - MINY)/2;
+		var z1 = z - (MAXZ - MINZ)/2;
 
 		var x2 = x1*cosC - y1*sinC + z1*0;
 		var y2 = x1*sinC + y1*cosC + z1*0;
@@ -65,15 +60,18 @@ var graph3d = (function() {
 		var y4 = x3*0 + cosA*y3 - sinA*z3;
 		var z4 = x3*0 + sinA*y3 + cosA*z3;
 
+		var d =300;
 
+		var xs = x4*(d/(d - z4));
+		var ys = y4*(d/(d - z4));
 
-		return [x4 + xd + shiftx + shift, y4 + yd + shifty, z4 + shiftz + shift];
+		return [xs*zoom + shiftx, ys*zoom + shifty, z4];
 	}
 	function ColorFunction(y) {
 		var c=d3.hsl( y, 0.5, 0.5).rgb();
 		return ("rgb("+parseInt(c.r)+","+parseInt(c.g)+","+parseInt(c.b)+")")
 	}
-	function DrawAxis() {
+	function Init() {
 
 		var svg = d3.select('#d3container')
 				.append('svg')
@@ -100,7 +98,7 @@ var graph3d = (function() {
 			    .attr("offset", "100%")
 			    .attr("stop-color", "#616065")
 			    .attr("stop-opacity", 1);
-
+		//Контейнер для заднего фона
 		var rect = svg.append('svg:rect')
 			.attr('x',0)
 			.attr('y',0)
@@ -109,6 +107,8 @@ var graph3d = (function() {
 			.attr('stroke','none')
 			.attr('fill','url(#GraphSvgGrad)')
 
+
+		//События мыши
 		document.getElementById("d3container").addEventListener("mousemove", function(e){
 			e.preventDefault();
 			if (isDown) {//Поворот мышью
@@ -132,6 +132,8 @@ var graph3d = (function() {
 			}
 		)
 	}
+
+
 	function DrawPoint(x,y,z,rr) {
 		var p = Transform(x,y,z);
 		var svg = d3.select('#GraphSvg')
@@ -143,20 +145,20 @@ var graph3d = (function() {
 			.attr('z1',z)
 			.attr('class','point')
 			.attr('fill','yellow')
-			.attr('r',5)
+			.attr('r',3)
 
 			.on('mouseover',function() {
 				console.log(this.getAttribute('x1') +' '+ this.getAttribute('y1') + ' ' + this.getAttribute('z1'));
 			})
-		if (rr == 'real')
-		{
-			ret.attr('fill',ColorFunction(y))
-				.attr('real','real')
-		}
-		else
+		if (rr == 'unreal')
 		{
 			ret.attr('fill','yellow')
 				.attr('real','unreal')
+		}
+		else
+		{
+			ret.attr('fill',ColorFunction(y))
+				.attr('real','real')	
 		}
 		return ret;
 	}
@@ -245,6 +247,7 @@ var graph3d = (function() {
 		return ret;
 	}
 	function DrawCharts() {
+		//Создание полотен - чартов, стоящих по бокам от графика
 		var svg = DrawPolygon([[MINX,MINY,MINZ-ChartShift],[MAXX,MINY,MINZ-ChartShift],[MAXX,MAXY,MINZ-ChartShift],[MINX,MAXY,MINZ-ChartShift]],'chart');			
 		svg.attr('id', 'chartOX');
 		svg.attr('fill','url(#GraphSvgGrad)');
@@ -286,7 +289,175 @@ var graph3d = (function() {
 				.attr('id', 'GraphOY')
 				.attr('fill','none')
 				.attr('class','line')
+
+		//Создание осей с подписями
+		DrawAxis();
 	}
+	function DrawAxis() {
+		var d = '';//строка для занесения точек для отрисовки
+		var dist = 7; //длина черточки на каждой градации
+		var distCh = 5; //Расстояние от чарта
+
+		//левая ось OY
+		var cg = cgy;
+		var dc = (MAXY - MINY)/cg;
+		for (var i = 0; i <= cg; i+=1) {
+
+			var p1 = Transform( MINX - ChartShift, MINY + dc*i, MAXZ + dist + distCh);
+			var p2 = Transform( MINX - ChartShift, MINY + dc*i, MAXZ  + distCh);
+			var p3 = Transform( MINX - ChartShift, MINY + dc*(i+1), MAXZ + distCh);
+			d += 'M'+p1[0]+' '+p1[1];
+			d += 'L'+p2[0]+' '+p2[1];
+			if (i < cg)
+				d += 'L'+p3[0]+' '+p3[1];
+		}
+		var svg = d3.select('#GraphSvg');
+		var line =	svg.append('path')
+			.attr('d',d)
+			.attr('id','AxisGraphOYleft')
+			.attr('stroke','black')
+			.attr('stroke-width',1)
+			.attr('class', 'lineAxis')
+			.attr('fill','none')
+			.attr('stroke','white')
+		//правая ось OY
+		d = '';
+		var cg = cgy;
+		for (var i = 0; i <= cg; i+=1) {
+
+			var p1 = Transform( MAXX + dist + distCh, MINY + dc*i, MINZ - ChartShift);
+			var p2 = Transform( MAXX + distCh, MINY + dc*i, MINZ - ChartShift);
+			var p3 = Transform( MAXX + distCh, MINY + dc*(i+1), MINZ - ChartShift);
+			d += 'M'+p1[0]+' '+p1[1];
+			d += 'L'+p2[0]+' '+p2[1];
+			if (i < cg)
+				d += 'L'+p3[0]+' '+p3[1];
+		}
+		var svg = d3.select('#GraphSvg');
+		var line =	svg.append('path')
+			.attr('d',d)
+			.attr('id','AxisGraphOYright')
+			.attr('stroke','black')
+			.attr('stroke-width',1)
+			.attr('class', 'lineAxis')
+			.attr('fill','none')
+			.attr('stroke','white')
+		//ось OZ
+		d = ''
+		cg = cgz;
+		var dc = (MAXZ - MINZ)/cg
+		for (var i = 0; i <= cg; i+=1) {
+
+			var p1 = Transform( MAXX + distCh + dist, MINY - ChartShift, MINZ +dc*i);
+			var p2 = Transform( MAXX + distCh, MINY - ChartShift, MINZ +dc*i);
+			var p3 = Transform( MAXX + distCh, MINY - ChartShift, MINZ +dc*(i+1) );
+			d += 'M'+p1[0]+' '+p1[1];
+			d += 'L'+p2[0]+' '+p2[1];
+			if (i < cg)
+				d += 'L'+p3[0]+' '+p3[1];
+		}
+		var svg = d3.select('#GraphSvg');
+		var line =	svg.append('path')
+			.attr('d',d)
+			.attr('id','AxisGraphOZ')
+			.attr('stroke','black')
+			.attr('stroke-width',1)
+			.attr('class', 'lineAxis')
+			.attr('fill','none')
+			.attr('stroke','white')
+
+		//ось OX
+		d = ''
+		cg = cgx;
+		var dc = (MAXX - MINX)/cg;
+		for (var i = 0; i <= cg; i+=1) {
+			var p1 = Transform( MINX +dc*i , MINY - ChartShift, MAXZ + distCh + dist);
+			var p2 = Transform( MINX +dc*i , MINY - ChartShift, MAXZ + distCh);
+			var p3 = Transform( MINX +dc*(i+1) , MINY - ChartShift, MAXZ + distCh);
+			d += 'M'+p1[0]+' '+p1[1];
+			d += 'L'+p2[0]+' '+p2[1];
+			if (i < cg)
+				d += 'L'+p3[0]+' '+p3[1];
+		}
+		var svg = d3.select('#GraphSvg');
+		var line =	svg.append('path')
+			.attr('d',d)
+			.attr('id','AxisGraphOX')
+			.attr('stroke','black')
+			.attr('stroke-width',1)
+			.attr('class', 'lineAxis')
+			.attr('fill','none')
+			.attr('stroke','white')
+	}
+	function DrawGraphic(obj) {
+		if (obj.id == 'LineOZ')
+		{
+			var points = obj.getAttribute('points').split(' ');
+			var graph = document.getElementById('GraphOZ')
+			var d = '';
+			var d1 = '';
+			var p;	var pt;
+			for (var i = 0; i < points.length; i += 3) {
+				if (sinB > 0)
+					p = [ MINX - ChartShift, points[i+1], points[i+2] ];
+				else
+					p = [ MAXX + ChartShift, points[i+1], points[i+2] ];
+				pt = Transform( p[0],p[1],p[2]);
+				if (i == 0)
+					d = 'M';
+				else
+					d += 'L';
+					d += pt[0] + ' ' + pt[1];
+				d1 += p[0] + ' ' + p[1] + ' ' + p[2] + ' '; 
+			}
+			graph.setAttribute('d',d);
+			graph.setAttribute('points', d1.trim());
+			graph.setAttribute('stroke', 'blue')
+		}
+		if (obj.id == 'LineOX')
+		{
+			var points = obj.getAttribute('points').split(' ');
+			var graph = document.getElementById('GraphOX')
+			var d = '';
+			var d1 = '';
+			var p;	var pt;
+			for (var i = 0; i < points.length; i += 3) {
+				if (cosB > 0)
+					p = [ points[i], points[i+1], MINZ - ChartShift ];
+				else
+					p = [ points[i], points[i+1], MAXZ + ChartShift ];
+				pt = Transform( p[0],p[1],p[2]);
+				if (i == 0)
+					d = 'M';
+				else
+					d += 'L';
+					d += pt[0] + ' ' + pt[1];
+				d1 += p[0] + ' ' + p[1] + ' ' + p[2] + ' '; 
+			}
+			graph.setAttribute('d',d);
+			graph.setAttribute('points', d1.trim());
+			graph.setAttribute('stroke', 'yellow')
+		}
+	}
+	function DrawData() {
+		for (var i = 1; i < Data.length; i += 1)
+			for (var j = 1; j < Data[i].length; j +=1 )
+				DrawPolygon([ Data[i][j],Data[i][j-1],Data[i-1][j-1],Data[i-1][j]  ],'polygon');
+		
+		for (var i = 0; i < Data.length; i += 1)
+			DrawLine(Data[i],'LineOZ');
+				
+		for (var i = 0; i < Data[0].length; i += 1)	{
+			var p = [];
+			for (var j = 0; j < Data.length; j += 1)
+				p.push(Data[j][i]);
+			DrawLine(p,'LineOX');
+		}
+		for (var i = 0; i < Data.length; i += 1)
+			for (var j = 0; j < Data[i].length; j += 1)
+				DrawPoint(Data[i][j][0],Data[i][j][1],Data[i][j][2],Data[i][j][3]);
+	}
+
 	function RotatePoints() {
 		var svg = d3.select('#GraphSvg');
 		var points = GraphSvg.getElementsByClassName('point');
@@ -348,56 +519,6 @@ var graph3d = (function() {
 			a.setAttribute('fill',ColorFunction(MaxY))	
 		}
 	}
-	function DrawGraphic(obj) {
-		if (obj.id == 'LineOZ')
-		{
-			var points = obj.getAttribute('points').split(' ');
-			var graph = document.getElementById('GraphOZ')
-			var d = '';
-			var d1 = '';
-			var p;	var pt;
-			for (var i = 0; i < points.length; i += 3) {
-				if (sinB > 0)
-					p = [ MINX - ChartShift, points[i+1], points[i+2] ];
-				else
-					p = [ MAXX + ChartShift, points[i+1], points[i+2] ];
-				pt = Transform( p[0],p[1],p[2]);
-				if (i == 0)
-					d = 'M';
-				else
-					d += 'L';
-					d += pt[0] + ' ' + pt[1];
-				d1 += p[0] + ' ' + p[1] + ' ' + p[2] + ' '; 
-			}
-			graph.setAttribute('d',d);
-			graph.setAttribute('points', d1.trim());
-			graph.setAttribute('stroke', 'blue')
-		}
-		if (obj.id == 'LineOX')
-		{
-			var points = obj.getAttribute('points').split(' ');
-			var graph = document.getElementById('GraphOX')
-			var d = '';
-			var d1 = '';
-			var p;	var pt;
-			for (var i = 0; i < points.length; i += 3) {
-				if (cosB > 0)
-					p = [ points[i], points[i+1], MINZ - ChartShift ];
-				else
-					p = [ points[i], points[i+1], MAXZ + ChartShift ];
-				pt = Transform( p[0],p[1],p[2]);
-				if (i == 0)
-					d = 'M';
-				else
-					d += 'L';
-					d += pt[0] + ' ' + pt[1];
-				d1 += p[0] + ' ' + p[1] + ' ' + p[2] + ' '; 
-			}
-			graph.setAttribute('d',d);
-			graph.setAttribute('points', d1.trim());
-			graph.setAttribute('stroke', 'yellow')
-		}
-	}
 	function RotateCharts()	{
 		var Chart;
 		var p;
@@ -445,6 +566,8 @@ var graph3d = (function() {
 		for (var i = 0; i < p.length; i +=1 )
 			points += p[i]+' ';
 		Graph.attr('points',points.trim());
+
+		RotateAxis();
 	}
 	function RotateScene(rx,ry,rz) {
 		if ( (currx >= -90 || rx > 0) && (currx <= 0 || rx < 0) ) // Ограничение на движение по оси OX
@@ -463,86 +586,129 @@ var graph3d = (function() {
 		RotateLines();
 		RotatePoints();
 	}
-	function TransformData(arg) {
+	function RotateAxis() {
+		var d = '';//строка для занесения точек для отрисовки
+		var d1 = '';
+		var dist = 7; //длина черточки на каждой градации
+		var distCh = 5; //Расстояние от чарта
 
-		arg.forEach(function(subArray) {
-			var b = [];
-			subArray.forEach(function(subsubArray) {
-				b.push(subsubArray);
-			})
-			DATA.push(b);
-		})
-
-		var Dates = [];
-		for (var i = 0; i < arg.length; i += 1)	{
-			Dates[i] = arg[i][0];
-			arg[i][2] = arg[i][2]*3;
-		}
-		
-		var i = Dates.length;
-		Dates.sort();
-		while (i--) //Удаление повторяющихся дат
-	    	if (Dates[i] == Dates[i-1])
-	        	Dates.splice(i, 1);
-		
-		var d = [];
-		
-		for (var k = 0; k < Dates.length; k += 1 )// распределение выборки по датам
-			d[k] = arg.filter( function(item){ if (item[0] == Dates[k]) return item; })
-
-
-		
-		var MinZ = d[0][0][2]; var MaxZ = d[0][0][2];//нахождение максимального и минимального значения Z в выборке
-		for (var k = 0; k < d.length; k += 1)
-			for (var j = 0; j < d[k].length; j+=1) {
-				if (d[k][j][2] > MaxZ)	MaxZ = d[k][j][2]
-				if (d[k][j][2] < MinZ)	MinZ = d[k][j][2]				
-			}
-
-		for (var i = 0; i < d.length; i += 1) {//Выравнивание данных по оси OZ
-			var dz = (MaxZ - MinZ)/(d[i].length -1 ) ;
-			for (var j = 0; j < d[i].length; j += 1)
-				d[i][j][2] = MinZ + j*dz;
-		}
-
-		var dd1 = [];
-		var DZ = 6;
-		var dz = (MaxZ - MinZ)/DZ;
-		for (var i = 0; i < d.length; i += 1) {
-			var dd2 = [];
-			for (var j = 0; j < DZ; j += 1) {
-				var corel = 100;
-				var Index = 0;
-				for (var k = 0; k < d[i].length; k += 1) {
-					var CurCorel =  Math.abs((d[i][k][2] - MinZ) - dz*j);
-					if (CurCorel < corel) {
-						corel = CurCorel;
-						Index = k;
-					}
+		//левая ось OY
+		var cg = cgy;
+		var dc = (MAXY - MINY)/cg;
+		for (var i = 0; i <= cg; i+=1) {
+			if (sinB > 0) {
+				if (cosB > 0) {
+					var p1 = Transform( MINX - ChartShift, MINY + dc*i, MAXZ + dist + distCh);
+					var p2 = Transform( MINX - ChartShift, MINY + dc*i, MAXZ  + distCh);
+					var p3 = Transform( MINX - ChartShift, MINY + dc*(i+1), MAXZ + distCh);	
 				}
-				var p = d[i][Index];
-				p[2] = MinZ + dz*j;
-				dd2.push(p);
+				else {
+					var p1 = Transform( MINX - ChartShift, MINY + dc*i, MINZ - dist - distCh);
+					var p2 = Transform( MINX - ChartShift, MINY + dc*i, MINZ  - distCh);
+					var p3 = Transform( MINX - ChartShift, MINY + dc*(i+1), MINZ - distCh);	
+				}
 			}
-			dd2 = dd2;
-			dd1.push(dd2);
+			else {
+				if (cosB > 0) {
+					var p1 = Transform( MAXX + ChartShift, MINY + dc*i, MAXZ + dist + distCh);
+					var p2 = Transform( MAXX + ChartShift, MINY + dc*i, MAXZ  + distCh);
+					var p3 = Transform( MAXX + ChartShift, MINY + dc*(i+1), MAXZ + distCh);
+				}
+				else {
+					var p1 = Transform( MAXX + ChartShift, MINY + dc*i, MINZ - dist - distCh);
+					var p2 = Transform( MAXX + ChartShift, MINY + dc*i, MINZ  - distCh);
+					var p3 = Transform( MAXX + ChartShift, MINY + dc*(i+1), MINZ - distCh);	
+				}
+			}
+			d += 'M'+p1[0]+' '+p1[1];
+			d += 'L'+p2[0]+' '+p2[1];
+			if (i < cg)
+				d += 'L'+p3[0]+' '+p3[1];
 		}
-		Data = dd1;
-		
-		MAXX = Data[0][0][0]; MAXY = Data[0][0][1]; MAXZ = Data[0][0][2];
-		MINX = MAXX; MINY = MAXY; MINZ = MAXZ;
-		
-		for (var i = 0; i < Data.length; i += 1)
-			for (var j = 0; j < Data[i].length; j += 1) {
-				if ( MAXX < Data[i][j][0])	MAXX = Data[i][j][0];
-				if ( MINX > Data[i][j][0])	MINX = Data[i][j][0];
+		var svg = d3.select('#AxisGraphOYleft')
+			.attr('d',d)
 
-				if ( MAXY < Data[i][j][1])	MAXY = Data[i][j][1];
-				if ( MINY > Data[i][j][1])	MINY = Data[i][j][1];
-
-				if ( MAXZ < Data[i][j][2])	MAXZ = Data[i][j][2];
-				if ( MINZ > Data[i][j][2])	MINZ = Data[i][j][2];
+		//правая ось OY
+		d = '';
+		dc = (MAXY - MINY)/cg;
+		for (var i = 0; i <= cg; i+=1) {
+			if (sinB > 0) {
+				if (cosB > 0) {
+					var p1 = Transform( MAXX + distCh + dist, MINY + dc*i, MINZ - ChartShift);
+					var p2 = Transform( MAXX + distCh, MINY + dc*i, MINZ - ChartShift);
+					var p3 = Transform( MAXX + distCh, MINY + dc*(i+1), MINZ - ChartShift);	
+				}
+				else {
+					var p1 = Transform( MAXX + distCh + dist, MINY + dc*i, MAXZ + ChartShift);
+					var p2 = Transform( MAXX + distCh, MINY + dc*i, MAXZ + ChartShift);
+					var p3 = Transform( MAXX + distCh, MINY + dc*(i+1), MAXZ + ChartShift);	
+				}
 			}
+			else {
+				if (cosB > 0) {
+					var p1 = Transform( MINX - distCh - dist, MINY + dc*i, MINZ - ChartShift);
+					var p2 = Transform( MINX - distCh, MINY + dc*i, MINZ - ChartShift);
+					var p3 = Transform( MINX - distCh, MINY + dc*(i+1), MINZ - ChartShift);	
+				}
+				else {
+					var p1 = Transform( MINX - distCh - dist, MINY + dc*i, MAXZ + ChartShift);
+					var p2 = Transform( MINX - distCh, MINY + dc*i, MAXZ + ChartShift);
+					var p3 = Transform( MINX - distCh, MINY + dc*(i+1), MAXZ + ChartShift);	
+				}
+			}
+			d += 'M'+p1[0]+' '+p1[1];
+			d += 'L'+p2[0]+' '+p2[1];
+			if (i < cg)
+				d += 'L'+p3[0]+' '+p3[1];
+		}
+		var svg = d3.select('#AxisGraphOYright')
+			.attr('d',d)
+
+		//Ось OZ
+		d = '';
+		cg = cgz;
+		dc = (MAXZ- MINZ)/cg
+		for (var i = 0; i <= cg; i+=1) {
+			if (sinB > 0) {
+				var p1 = Transform( MAXX + distCh + dist, MINY - ChartShift, MINZ +dc*i);
+				var p2 = Transform( MAXX + distCh, MINY - ChartShift, MINZ +dc*i);
+				var p3 = Transform( MAXX + distCh, MINY - ChartShift, MINZ +dc*(i+1) );
+			}
+			else {
+				var p1 = Transform( MINX - distCh - dist, MINY - ChartShift, MINZ +dc*i);
+				var p2 = Transform( MINX - distCh, MINY - ChartShift, MINZ +dc*i);
+				var p3 = Transform( MINX - distCh, MINY - ChartShift, MINZ +dc*(i+1) );
+			}
+			d += 'M'+p1[0]+' '+p1[1];
+			d += 'L'+p2[0]+' '+p2[1];
+			if (i < cg)
+				d += 'L'+p3[0]+' '+p3[1];
+		}
+		var svg = d3.select('#AxisGraphOZ')
+			.attr('d',d)
+
+		//Ось OX
+		d = '';
+		cg = cgx;
+		dc = (MAXX- MINX)/cg
+		for (var i = 0; i <= cg; i+=1) {
+			if (cosB > 0) {
+				var p1 = Transform( MINX +dc*i , MINY - ChartShift, MAXZ + distCh + dist);
+				var p2 = Transform( MINX +dc*i , MINY - ChartShift, MAXZ + distCh);
+				var p3 = Transform( MINX +dc*(i+1) , MINY - ChartShift, MAXZ + distCh);
+			}
+			else {
+				var p1 = Transform( MINX +dc*i , MINY - ChartShift, MINZ - distCh - dist);
+				var p2 = Transform( MINX +dc*i , MINY - ChartShift, MINZ - distCh);
+				var p3 = Transform( MINX +dc*(i+1) , MINY - ChartShift, MINZ - distCh);
+			}
+			d += 'M'+p1[0]+' '+p1[1];
+			d += 'L'+p2[0]+' '+p2[1];
+			if (i < cg)
+				d += 'L'+p3[0]+' '+p3[1];
+		}
+		var svg = d3.select('#AxisGraphOX')
+			.attr('d',d)
 	}
 	function TransformData1(arg) {
 		arg.forEach(function(subArray) {
@@ -671,24 +837,7 @@ var graph3d = (function() {
 				if ( MINZ > Data[i][j][2])	MINZ = Data[i][j][2];
 			}
 	}
-	function DrawData() {
-		for (var i = 1; i < Data.length; i += 1)
-			for (var j = 1; j < Data[i].length; j +=1 )
-				DrawPolygon([ Data[i][j],Data[i][j-1],Data[i-1][j-1],Data[i-1][j]  ],'polygon');
-		
-		for (var i = 0; i < Data.length; i += 1)
-			DrawLine(Data[i],'LineOZ');
-				
-		for (var i = 0; i < Data[0].length; i += 1)	{
-			var p = [];
-			for (var j = 0; j < Data.length; j += 1)
-				p.push(Data[j][i]);
-			DrawLine(p,'LineOX');
-		}
-		for (var i = 0; i < Data.length; i += 1)
-			for (var j = 0; j < Data[i].length; j += 1)
-				DrawPoint(Data[i][j][0],Data[i][j][1],Data[i][j][2],Data[i][j][3]);
-	}
+
 	function DrawRealData() {
 		for (var i = 0; i < DATA.length; i+=1)
 			DrawPoint(DATA[i][0],DATA[i][1],DATA[i][2]*3)
@@ -719,28 +868,23 @@ var graph3d = (function() {
 				d[i][1] = d[i][1]/1;
 			}
 
-			graph3d.DrawAxis();
+			graph3d.Init();
 			graph3d.TransformData1(d);
-			//graph3d.TransformData(d);
 			graph3d.DrawCharts();
 			graph3d.DrawData();
 			//graph3d.DrawRealData();
-			//graph3d.DrawPoint(0,0,0);
-			console.log(MAXX);
 		});
 	}
 
 	
 	return {
 		//public
-		DrawAxis:DrawAxis,
+		Init:Init,
 		DrawPoint:DrawPoint,
 		RotateScene:RotateScene,
 		DrawLine:DrawLine,
 		DrawPolygon:DrawPolygon,
 		Zoom:Zoom,
-		Shift:Shift,
-		TransformData:TransformData,
 		DrawCharts:DrawCharts,
 		DrawData:DrawData,
 		DrawRealData:DrawRealData,
