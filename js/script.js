@@ -6,11 +6,11 @@ var graph3d = (function() {
 
 	var currx = 0; //поворот по х в градусах
 	var curry = 0; //поворот по у
-	var currz = 0; //поворот по з
+	var currz = 0; //поворот по z
 
 	var mousePosX = 0; //Текущая позиция мыши
 	var mousePosY = 0; //Текущая позиция мыши
-	var isDown = false;
+	var isDown = false; //Нажатость клавишы мыши
 
 	var cosA = 1, sinA = 0, cosB = 1, sinB = 0, cosC = 1, sinC = 0;
 	var MAXX = 1, MAXY = 1, MAXZ = 1, MINX = 1, MINY = 1, MINZ = 1;
@@ -19,9 +19,11 @@ var graph3d = (function() {
 	var cgz = 7;//количество градаций на оси OZ
 	var cgx = 10;//количество градаций на оси OX
 
-	var DZ = 4; //Количество градаций по оси Z
+	var DZ = 12; //Количество градаций по оси Z
  
 	var zoom = 1.2; //значение приближения - отдаления
+
+	var distance = 300; //Дистанция наблюдения, нужна для создания перспективы
 
 	var DATA = []; //Данные не тронутые злым гением, вытянутые из json
 	var Data = []; //Данные, измененные для прорисовки
@@ -40,8 +42,8 @@ var graph3d = (function() {
 		var yd = (ymin + ymax)/2;
 		var zd = (zmin + zmax)/2;
 
-		var shiftx = xd ;
-		var shifty = yd ;
+		var shiftx = xd;
+		var shifty = yd;
 		var shiftz = 0;
 
 		var x1 = x - (MAXX - MINX)/2;
@@ -60,16 +62,43 @@ var graph3d = (function() {
 		var y4 = x3*0 + cosA*y3 - sinA*z3;
 		var z4 = x3*0 + sinA*y3 + cosA*z3;
 
-		var d =300;
-
-		var xs = x4*(d/(d - z4));
-		var ys = y4*(d/(d - z4));
+		var xs = x4*(distance/(distance - z4));
+		var ys = y4*(distance/(distance - z4));
 
 		return [xs*zoom + shiftx, ys*zoom + shifty, z4];
 	}
 	function ColorFunction(y) {
 		var c=d3.hsl( y, 0.5, 0.5).rgb();
 		return ("rgb("+parseInt(c.r)+","+parseInt(c.g)+","+parseInt(c.b)+")")
+	}
+	function DataFunction(d)
+	{
+		var D = 0;
+		var W = 0;
+		var M = 0;
+		var Y = 0;
+		while (d > 365)
+		{
+			d -= 365;
+			D += 1;
+		}
+		if (D > 0)
+			return ''+D+'Y';
+		while (d > 31)
+		{
+			d -= 31;
+			M += 1;
+		}
+		if (M > 0)
+			return ''+M+'M';
+		while (d > 7)
+		{
+			d -= 7;
+			W += 1;
+		}
+		if (W > 0)
+			return ''+W+'W';
+		return ''+D+'d'
 	}
 	function Init() {
 
@@ -107,7 +136,6 @@ var graph3d = (function() {
 			.attr('stroke','none')
 			.attr('fill','url(#GraphSvgGrad)')
 
-
 		//События мыши
 		document.getElementById("d3container").addEventListener("mousemove", function(e){
 			e.preventDefault();
@@ -132,7 +160,6 @@ var graph3d = (function() {
 			}
 		)
 	}
-
 
 	function DrawPoint(x,y,z,rr) {
 		var p = Transform(x,y,z);
@@ -306,10 +333,19 @@ var graph3d = (function() {
 			var p1 = Transform( MINX - ChartShift, MINY + dc*i, MAXZ + dist + distCh);
 			var p2 = Transform( MINX - ChartShift, MINY + dc*i, MAXZ  + distCh);
 			var p3 = Transform( MINX - ChartShift, MINY + dc*(i+1), MAXZ + distCh);
+			var pt = Transform( MINX - ChartShift, MINY + dc*i, MAXZ + dist + distCh);
 			d += 'M'+p1[0]+' '+p1[1];
 			d += 'L'+p2[0]+' '+p2[1];
 			if (i < cg)
 				d += 'L'+p3[0]+' '+p3[1];
+			var svg = d3.select('#GraphSvg');
+				svg.append('text')
+					.attr('class','OYleftText')
+					.attr('x',pt[0])
+					.attr('y',pt[1])
+					.attr('fill','white')
+					.attr('font-size',10)
+					.text((dc*i + MINY).toFixed(2) )
 		}
 		var svg = d3.select('#GraphSvg');
 		var line =	svg.append('path')
@@ -320,6 +356,8 @@ var graph3d = (function() {
 			.attr('class', 'lineAxis')
 			.attr('fill','none')
 			.attr('stroke','white')
+		
+
 		//правая ось OY
 		d = '';
 		var cg = cgy;
@@ -328,10 +366,19 @@ var graph3d = (function() {
 			var p1 = Transform( MAXX + dist + distCh, MINY + dc*i, MINZ - ChartShift);
 			var p2 = Transform( MAXX + distCh, MINY + dc*i, MINZ - ChartShift);
 			var p3 = Transform( MAXX + distCh, MINY + dc*(i+1), MINZ - ChartShift);
+			var pt = Transform( MAXX + dist + distCh, MINY + dc*i, MINZ - ChartShift);
 			d += 'M'+p1[0]+' '+p1[1];
 			d += 'L'+p2[0]+' '+p2[1];
 			if (i < cg)
 				d += 'L'+p3[0]+' '+p3[1];
+			var svg = d3.select('#GraphSvg');
+				svg.append('text')
+					.attr('class','OYrightText')
+					.attr('x',pt[0])
+					.attr('y',pt[1])
+					.attr('fill','white')
+					.attr('font-size',10)
+					.text((dc*i + MINY).toFixed(2) )
 		}
 		var svg = d3.select('#GraphSvg');
 		var line =	svg.append('path')
@@ -342,6 +389,8 @@ var graph3d = (function() {
 			.attr('class', 'lineAxis')
 			.attr('fill','none')
 			.attr('stroke','white')
+		
+
 		//ось OZ
 		d = ''
 		cg = cgz;
@@ -351,10 +400,19 @@ var graph3d = (function() {
 			var p1 = Transform( MAXX + distCh + dist, MINY - ChartShift, MINZ +dc*i);
 			var p2 = Transform( MAXX + distCh, MINY - ChartShift, MINZ +dc*i);
 			var p3 = Transform( MAXX + distCh, MINY - ChartShift, MINZ +dc*(i+1) );
+			var pt = Transform( MAXX + distCh + dist, MINY - ChartShift, MINZ +dc*i);
 			d += 'M'+p1[0]+' '+p1[1];
 			d += 'L'+p2[0]+' '+p2[1];
 			if (i < cg)
 				d += 'L'+p3[0]+' '+p3[1];
+			var svg = d3.select('#GraphSvg');
+				svg.append('text')
+					.attr('class','OZText')
+					.attr('x',pt[0])
+					.attr('y',pt[1])
+					.attr('fill','white')
+					.attr('font-size',10)
+					.text((dc*i + MINZ).toFixed(2) )
 		}
 		var svg = d3.select('#GraphSvg');
 		var line =	svg.append('path')
@@ -378,6 +436,14 @@ var graph3d = (function() {
 			d += 'L'+p2[0]+' '+p2[1];
 			if (i < cg)
 				d += 'L'+p3[0]+' '+p3[1];
+			var svg = d3.select('#GraphSvg');
+				svg.append('text')
+					.attr('class','OXText')
+					.attr('x',p1[0])
+					.attr('y',p1[1])
+					.attr('fill','white')
+					.attr('font-size',10)
+					.text(DataFunction( (MINX + dc*i).toFixed(0) ) );
 		}
 		var svg = d3.select('#GraphSvg');
 		var line =	svg.append('path')
@@ -388,6 +454,10 @@ var graph3d = (function() {
 			.attr('class', 'lineAxis')
 			.attr('fill','none')
 			.attr('stroke','white')
+
+		$('text').mousedown((function(e){
+			e.preventDefault();
+		}));
 	}
 	function DrawGraphic(obj) {
 		if (obj.id == 'LineOZ')
@@ -591,39 +661,51 @@ var graph3d = (function() {
 		var d1 = '';
 		var dist = 7; //длина черточки на каждой градации
 		var distCh = 5; //Расстояние от чарта
+		var txtmargin = 0;
 
 		//левая ось OY
 		var cg = cgy;
 		var dc = (MAXY - MINY)/cg;
+		var texts = document.getElementsByClassName('OYleftText')
 		for (var i = 0; i <= cg; i+=1) {
 			if (sinB > 0) {
 				if (cosB > 0) {
-					var p1 = Transform( MINX - ChartShift, MINY + dc*i, MAXZ + dist + distCh);
-					var p2 = Transform( MINX - ChartShift, MINY + dc*i, MAXZ  + distCh);
-					var p3 = Transform( MINX - ChartShift, MINY + dc*(i+1), MAXZ + distCh);	
+					var p1 = Transform( MINX - ChartShift, MINY + dc*i, 	MAXZ + dist + distCh);
+					var p2 = Transform( MINX - ChartShift, MINY + dc*i, 	MAXZ  + distCh);
+					var p3 = Transform( MINX - ChartShift, MINY + dc*(i+1), MAXZ + distCh);
+
+					var pt = Transform( MINX - ChartShift, MINY + dc*i, MAXZ + dist + distCh);
 				}
 				else {
-					var p1 = Transform( MINX - ChartShift, MINY + dc*i, MINZ - dist - distCh);
-					var p2 = Transform( MINX - ChartShift, MINY + dc*i, MINZ  - distCh);
+					var p1 = Transform( MINX - ChartShift, MINY + dc*i, 	MINZ - dist - distCh);
+					var p2 = Transform( MINX - ChartShift, MINY + dc*i, 	MINZ  - distCh);
 					var p3 = Transform( MINX - ChartShift, MINY + dc*(i+1), MINZ - distCh);	
+
+					var pt = Transform( MINX - ChartShift, MINY + dc*i, MINZ - dist - distCh);
 				}
 			}
 			else {
 				if (cosB > 0) {
-					var p1 = Transform( MAXX + ChartShift, MINY + dc*i, MAXZ + dist + distCh);
-					var p2 = Transform( MAXX + ChartShift, MINY + dc*i, MAXZ  + distCh);
+					var p1 = Transform( MAXX + ChartShift, MINY + dc*i, 	MAXZ + dist + distCh);
+					var p2 = Transform( MAXX + ChartShift, MINY + dc*i, 	MAXZ  + distCh);
 					var p3 = Transform( MAXX + ChartShift, MINY + dc*(i+1), MAXZ + distCh);
+					
+					var pt = Transform( MAXX + ChartShift, MINY + dc*i, MAXZ + dist + distCh);
 				}
 				else {
 					var p1 = Transform( MAXX + ChartShift, MINY + dc*i, MINZ - dist - distCh);
 					var p2 = Transform( MAXX + ChartShift, MINY + dc*i, MINZ  - distCh);
-					var p3 = Transform( MAXX + ChartShift, MINY + dc*(i+1), MINZ - distCh);	
+					var p3 = Transform( MAXX + ChartShift, MINY + dc*(i+1), MINZ - distCh);
+
+					var pt = Transform( MAXX + ChartShift, MINY + dc*i, MINZ - dist - distCh);
 				}
 			}
 			d += 'M'+p1[0]+' '+p1[1];
 			d += 'L'+p2[0]+' '+p2[1];
 			if (i < cg)
 				d += 'L'+p3[0]+' '+p3[1];
+			texts[i].setAttribute('x',p1[0])
+			texts[i].setAttribute('y',p1[1])
 		}
 		var svg = d3.select('#AxisGraphOYleft')
 			.attr('d',d)
@@ -631,17 +713,22 @@ var graph3d = (function() {
 		//правая ось OY
 		d = '';
 		dc = (MAXY - MINY)/cg;
+		var texts = document.getElementsByClassName('OYrightText')
 		for (var i = 0; i <= cg; i+=1) {
 			if (sinB > 0) {
 				if (cosB > 0) {
 					var p1 = Transform( MAXX + distCh + dist, MINY + dc*i, MINZ - ChartShift);
 					var p2 = Transform( MAXX + distCh, MINY + dc*i, MINZ - ChartShift);
 					var p3 = Transform( MAXX + distCh, MINY + dc*(i+1), MINZ - ChartShift);	
+
+					var pt = Transform( MAXX + distCh + dist, MINY + dc*i, MINZ - ChartShift);
 				}
 				else {
 					var p1 = Transform( MAXX + distCh + dist, MINY + dc*i, MAXZ + ChartShift);
 					var p2 = Transform( MAXX + distCh, MINY + dc*i, MAXZ + ChartShift);
 					var p3 = Transform( MAXX + distCh, MINY + dc*(i+1), MAXZ + ChartShift);	
+
+					var pt = Transform( MAXX + distCh + dist, MINY + dc*i, MAXZ + ChartShift);
 				}
 			}
 			else {
@@ -649,17 +736,23 @@ var graph3d = (function() {
 					var p1 = Transform( MINX - distCh - dist, MINY + dc*i, MINZ - ChartShift);
 					var p2 = Transform( MINX - distCh, MINY + dc*i, MINZ - ChartShift);
 					var p3 = Transform( MINX - distCh, MINY + dc*(i+1), MINZ - ChartShift);	
+
+					var pt = Transform( MINX - distCh - dist - txtmargin, MINY + dc*i, MINZ - ChartShift);
 				}
 				else {
 					var p1 = Transform( MINX - distCh - dist, MINY + dc*i, MAXZ + ChartShift);
 					var p2 = Transform( MINX - distCh, MINY + dc*i, MAXZ + ChartShift);
 					var p3 = Transform( MINX - distCh, MINY + dc*(i+1), MAXZ + ChartShift);	
+
+					var pt = Transform( MINX - distCh - dist  - txtmargin, MINY + dc*i, MAXZ + ChartShift);
 				}
 			}
 			d += 'M'+p1[0]+' '+p1[1];
 			d += 'L'+p2[0]+' '+p2[1];
 			if (i < cg)
 				d += 'L'+p3[0]+' '+p3[1];
+			texts[i].setAttribute('x',pt[0])
+			texts[i].setAttribute('y',pt[1])
 		}
 		var svg = d3.select('#AxisGraphOYright')
 			.attr('d',d)
@@ -668,21 +761,28 @@ var graph3d = (function() {
 		d = '';
 		cg = cgz;
 		dc = (MAXZ- MINZ)/cg
+		var texts = document.getElementsByClassName('OZText')
 		for (var i = 0; i <= cg; i+=1) {
 			if (sinB > 0) {
 				var p1 = Transform( MAXX + distCh + dist, MINY - ChartShift, MINZ +dc*i);
 				var p2 = Transform( MAXX + distCh, MINY - ChartShift, MINZ +dc*i);
 				var p3 = Transform( MAXX + distCh, MINY - ChartShift, MINZ +dc*(i+1) );
+
+				var pt = Transform( MAXX + distCh + dist, MINY - ChartShift, MINZ +dc*i);
 			}
 			else {
 				var p1 = Transform( MINX - distCh - dist, MINY - ChartShift, MINZ +dc*i);
 				var p2 = Transform( MINX - distCh, MINY - ChartShift, MINZ +dc*i);
 				var p3 = Transform( MINX - distCh, MINY - ChartShift, MINZ +dc*(i+1) );
+
+				var pt = Transform( MINX - distCh - dist - txtmargin, MINY - ChartShift, MINZ +dc*i);
 			}
 			d += 'M'+p1[0]+' '+p1[1];
 			d += 'L'+p2[0]+' '+p2[1];
 			if (i < cg)
 				d += 'L'+p3[0]+' '+p3[1];
+			texts[i].setAttribute('x',pt[0])
+			texts[i].setAttribute('y',pt[1])
 		}
 		var svg = d3.select('#AxisGraphOZ')
 			.attr('d',d)
@@ -690,6 +790,7 @@ var graph3d = (function() {
 		//Ось OX
 		d = '';
 		cg = cgx;
+		var texts = document.getElementsByClassName('OXText')
 		dc = (MAXX- MINX)/cg
 		for (var i = 0; i <= cg; i+=1) {
 			if (cosB > 0) {
@@ -706,6 +807,8 @@ var graph3d = (function() {
 			d += 'L'+p2[0]+' '+p2[1];
 			if (i < cg)
 				d += 'L'+p3[0]+' '+p3[1];
+			texts[i].setAttribute('x',p1[0])
+			texts[i].setAttribute('y',p1[1])
 		}
 		var svg = d3.select('#AxisGraphOX')
 			.attr('d',d)
@@ -722,7 +825,7 @@ var graph3d = (function() {
 		var Dates = [];
 		for (var i = 0; i < arg.length; i += 1)	{
 			Dates[i] = arg[i][0];
-			arg[i][2] = arg[i][2]*3;
+			arg[i][2] = arg[i][2];
 		}
 		
 		var i = Dates.length;
@@ -738,7 +841,10 @@ var graph3d = (function() {
 		for (var k = 0; k < Dates.length; k += 1 )// массивов по оси Z
 			d[k] = d[k].sort( function(a,b){return a[2] - b[2]});
 
-		
+		for (var i = 0; i < d.length; i+= 1)
+			for (var j = 0; j < d[i].length; j+=1)
+				d[i][j][2] = d[i][j][2]*3;
+
 		var MinZ = d[0][0][2]; var MaxZ = d[0][0][2];//нахождение максимального и минимального значения Z в выборке
 		for (var k = 0; k < d.length; k += 1)
 			for (var j = 0; j < d[k].length; j+=1) {
@@ -872,7 +978,6 @@ var graph3d = (function() {
 			graph3d.TransformData1(d);
 			graph3d.DrawCharts();
 			graph3d.DrawData();
-			//graph3d.DrawRealData();
 		});
 	}
 
