@@ -12,6 +12,13 @@ var graph3d = (function() {
 	var mousePosY = 0; //Текущая позиция мыши
 	var isDown = false; //Нажатость клавишы мыши
 
+	var curDate;
+
+	var DATES= [];
+	var IMPLIED_VOLATILITY = [];
+	var MONEYNESS = [];
+
+
 	var cosA = 1, sinA = 0, cosB = 1, sinB = 0, cosC = 1, sinC = 0;
 	var MAXX = 1, MAXY = 1, MAXZ = 1, MINX = 1, MINY = 1, MINZ = 1;
 	var ChartShift = 40
@@ -19,7 +26,7 @@ var graph3d = (function() {
 	var cgz = 7;//количество градаций на оси OZ
 	var cgx = 10;//количество градаций на оси OX
 
-	var DZ = 12; //Количество градаций по оси Z
+	var DZ = 5; //Количество градаций по оси Z
  
 	var zoom = 1.2; //значение приближения - отдаления
 
@@ -73,27 +80,28 @@ var graph3d = (function() {
 	}
 	function DataFunction(d)
 	{
-		var D = 0;
+
+		var D = MAXX - d;
 		var W = 0;
 		var M = 0;
 		var Y = 0;
-		while (d > 365)
+		while (D > 365)
 		{
-			d -= 365;
-			D += 1;
+			D -= 365;
+			Y += 1;
 		}
-		if (D > 0)
-			return ''+D+'Y';
-		while (d > 31)
+		if (Y > 0)
+			return ''+Y+'Y';
+		while (D > 31)
 		{
-			d -= 31;
+			D -= 31;
 			M += 1;
 		}
 		if (M > 0)
 			return ''+M+'M';
-		while (d > 7)
+		while (D > 7)
 		{
-			d -= 7;
+			D -= 7;
 			W += 1;
 		}
 		if (W > 0)
@@ -157,6 +165,7 @@ var graph3d = (function() {
 				mousePosX = e.clientX; //Сообщение о нажатии мыши и запоминание текущих координат для задания угла поворота
 				mousePosY = e.clientY;
 				isDown = true;
+				e.preventDefault();
 			}
 		)
 	}
@@ -220,7 +229,7 @@ var graph3d = (function() {
 			line.on('mouseover', function(){
 				this.setAttribute('stroke', 'yellow');
 				this.setAttribute('stroke-opacity', 1)
-				//DrawGraphic(this)
+				DrawGraphic(this)
 			})
 			.on('mouseout', function(){
 				this.setAttribute('stroke-opacity', 0)
@@ -233,6 +242,7 @@ var graph3d = (function() {
 			line.on('mouseover', function(){
 				this.setAttribute('stroke', 'blue');
 				this.setAttribute('stroke-opacity', 1)
+				DrawGraphic(this)
 			})
 			.on('mouseout', function(){
 				this.setAttribute('stroke-opacity', 0)
@@ -324,7 +334,7 @@ var graph3d = (function() {
 		var d = '';//строка для занесения точек для отрисовки
 		var dist = 7; //длина черточки на каждой градации
 		var distCh = 5; //Расстояние от чарта
-
+		var color = 'white'
 		//левая ось OY
 		var cg = cgy;
 		var dc = (MAXY - MINY)/cg;
@@ -343,7 +353,7 @@ var graph3d = (function() {
 					.attr('class','OYleftText')
 					.attr('x',pt[0])
 					.attr('y',pt[1])
-					.attr('fill','white')
+					.attr('fill',color)
 					.attr('font-size',10)
 					.text((dc*i + MINY).toFixed(2) )
 		}
@@ -376,7 +386,7 @@ var graph3d = (function() {
 					.attr('class','OYrightText')
 					.attr('x',pt[0])
 					.attr('y',pt[1])
-					.attr('fill','white')
+					.attr('fill',color)
 					.attr('font-size',10)
 					.text((dc*i + MINY).toFixed(2) )
 		}
@@ -410,7 +420,7 @@ var graph3d = (function() {
 					.attr('class','OZText')
 					.attr('x',pt[0])
 					.attr('y',pt[1])
-					.attr('fill','white')
+					.attr('fill',color)
 					.attr('font-size',10)
 					.text((dc*i + MINZ).toFixed(2) )
 		}
@@ -441,7 +451,7 @@ var graph3d = (function() {
 					.attr('class','OXText')
 					.attr('x',p1[0])
 					.attr('y',p1[1])
-					.attr('fill','white')
+					.attr('fill',color)
 					.attr('font-size',10)
 					.text(DataFunction( (MINX + dc*i).toFixed(0) ) );
 		}
@@ -455,9 +465,6 @@ var graph3d = (function() {
 			.attr('fill','none')
 			.attr('stroke','white')
 
-		$('text').mousedown((function(e){
-			e.preventDefault();
-		}));
 	}
 	function DrawGraphic(obj) {
 		if (obj.id == 'LineOZ')
@@ -813,19 +820,28 @@ var graph3d = (function() {
 		var svg = d3.select('#AxisGraphOX')
 			.attr('d',d)
 	}
-	function TransformData1(arg) {
-		arg.forEach(function(subArray) {
-			var b = [];
-			subArray.forEach(function(subsubArray) {
-				b.push(subsubArray);
-			})
-			DATA.push(b);
-		})
+	function TransformData1(dates, iv, mnss) {
+		DATES = dates.concat()
+		IMPLIED_VOLATILITY = iv.concat()
+		MONEYNESS = mnss.concat();
+		
+		var MaxDate = Math.max.apply(null, DATES) / (1000*3600*24);
+		var CurDate = ((new Date() ) / (1000*3600*24) ).toFixed(0)/1;
+		var arg = [];
+		for (var i = 0; i < DATES.length; i += 1) {
+			var p = [( (DATES[i])/(1000*3600*24) - CurDate ).toFixed(0)/1, IMPLIED_VOLATILITY[i], MONEYNESS[i]];
+			arg.concat([p)
+		}
+		
+		console.log(arg);
+		console.log(CurDate);
+
+
+
 
 		var Dates = [];
 		for (var i = 0; i < arg.length; i += 1)	{
 			Dates[i] = arg[i][0];
-			arg[i][2] = arg[i][2];
 		}
 		
 		var i = Dates.length;
@@ -835,11 +851,13 @@ var graph3d = (function() {
 	        	Dates.splice(i, 1);
 		
 		var d = [];
+
 		
 		for (var k = 0; k < Dates.length; k += 1 )// распределение выборки по датам
 			d[k] = arg.filter( function(item){ if (item[0] == Dates[k]) return item; });
 		for (var k = 0; k < Dates.length; k += 1 )// массивов по оси Z
 			d[k] = d[k].sort( function(a,b){return a[2] - b[2]});
+
 
 		for (var i = 0; i < d.length; i+= 1)
 			for (var j = 0; j < d[i].length; j+=1)
@@ -944,10 +962,6 @@ var graph3d = (function() {
 			}
 	}
 
-	function DrawRealData() {
-		for (var i = 0; i < DATA.length; i+=1)
-			DrawPoint(DATA[i][0],DATA[i][1],DATA[i][2]*3)
-	}
 	function GetData(url) {
 		var a = document.getElementById('d3container');
 		if (a != null) {
@@ -955,29 +969,25 @@ var graph3d = (function() {
 			Data = [];
 			a.innerHTML = '';
 		}
-
 		$.getJSON( url, function( data ) {
-			var d = [];
-			var maxD = 0;
+			var dates = [];
+			var implied_volatility = [];
+			var moneyness = [];
 			for (var i = 0; i < data.length; i += 1) {
-				var text = data[i].expiration;
-				var date = new Date(text.replace(/(\d+)-(\d+)-(\d+)/, '$2/$3/$1'));
 
-				if (date > maxD || i == 0)
-					maxD = date;
+				var date = new Date(data[i].expiration);
+				dates.push(date);
+				implied_volatility.push((data[i].implied_volatility)/1);
+				moneyness.push((data[i].moneyness)/1);
 
-				d.push([date, data[i].implied_volatility, data[i].moneyness]);
-			}
-
-			for (var i = 0; i < d.length; i += 1 ) {
-				d[i][0] =  ((maxD - d[i][0])/(1000*3600*24)).toFixed(0)/1;
-				d[i][1] = d[i][1]/1;
 			}
 
 			graph3d.Init();
-			graph3d.TransformData1(d);
+			graph3d.TransformData1(dates, implied_volatility, moneyness);
 			graph3d.DrawCharts();
 			graph3d.DrawData();
+			graph3d.RotateScene(-30,-45,0)
+
 		});
 	}
 
@@ -992,7 +1002,6 @@ var graph3d = (function() {
 		Zoom:Zoom,
 		DrawCharts:DrawCharts,
 		DrawData:DrawData,
-		DrawRealData:DrawRealData,
 		GetData:GetData,
 		TransformData1:TransformData1
 	};
