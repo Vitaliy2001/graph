@@ -73,12 +73,41 @@ var graph3d = (function() {
 		var c=d3.hsl( y, 0.5, 0.5).rgb();
 		return ("rgb("+parseInt(c.r)+","+parseInt(c.g)+","+parseInt(c.b)+")")
 	}
-	function DrawAxis() {	
+	function DrawAxis() {
+
 		var svg = d3.select('#d3container')
 				.append('svg')
 				.attr('id','GraphSvg')
 				.attr('height',SvgHeight)
 				.attr('width',SvgWidth)
+				.attr('fill','url(#GraphSvgGrad)')
+
+		//Градиент для контейнера		
+		var gradient = svg.append("defs")
+			  .append("svg:linearGradient")
+			    .attr("id", "GraphSvgGrad")
+			    .attr("x1", "0%")
+			    .attr("y1", "100%")
+			    .attr("x2", "0%")
+			    .attr("y2", "0%")
+
+			gradient.append("svg:stop")
+			    .attr("offset", "0%")
+			    .attr("stop-color", "#030305")
+			    .attr("stop-opacity", 1);
+
+			gradient.append("svg:stop")
+			    .attr("offset", "100%")
+			    .attr("stop-color", "#616065")
+			    .attr("stop-opacity", 1);
+
+		var rect = svg.append('svg:rect')
+			.attr('x',0)
+			.attr('y',0)
+			.attr('width',SvgWidth)
+			.attr('height',SvgHeight)
+			.attr('stroke','none')
+			.attr('fill','url(#GraphSvgGrad)')
 
 		document.getElementById("d3container").addEventListener("mousemove", function(e){
 			e.preventDefault();
@@ -93,11 +122,11 @@ var graph3d = (function() {
 			}
 		})
 		document.getElementById("d3container").addEventListener("mouseup", function(e) {
-				isDown = false;
+				isDown = false;//Сообщение об отжатии кнопки мыши
 			}
 		)
 		document.getElementById("d3container").addEventListener("mousedown", function(e) {
-				mousePosX = e.clientX;
+				mousePosX = e.clientX; //Сообщение о нажатии мыши и запоминание текущих координат для задания угла поворота
 				mousePosY = e.clientY;
 				isDown = true;
 			}
@@ -218,14 +247,16 @@ var graph3d = (function() {
 	function DrawCharts() {
 		var svg = DrawPolygon([[MINX,MINY,MINZ-ChartShift],[MAXX,MINY,MINZ-ChartShift],[MAXX,MAXY,MINZ-ChartShift],[MINX,MAXY,MINZ-ChartShift]],'chart');			
 		svg.attr('id', 'chartOX');
-		svg.attr('fill','grey');
-		svg.append('path');
+		svg.attr('fill','url(#GraphSvgGrad)');
+		svg.attr('stroke','#E2E2E2')
 		svg = DrawPolygon([[MINX,MINY-ChartShift,MINZ],[MAXX,MINY-ChartShift,MINZ],[MAXX,MINY-ChartShift,MAXZ],[MINX,MINY-ChartShift,MAXZ]],'chart');
 		svg.attr('id', 'chartOZ');
-		svg.attr('fill','grey');
+		svg.attr('fill','url(#GraphSvgGrad)');
+		svg.attr('stroke','#E2E2E2')
 		svg = DrawPolygon([[MINX-ChartShift,MINY,MINZ],[MINX-ChartShift,MINY,MAXZ],[MINX-ChartShift,MAXY,MAXZ],[MINX-ChartShift,MAXY,MINZ]],'chart');
 		svg.attr('id', 'chartOY');
-		svg.attr('fill','grey');
+		svg.attr('fill','url(#GraphSvgGrad)');
+		svg.attr('stroke','#E2E2E2')
 
 		//создание линий, которые будут проекциями на чарты
 		var p = [Transform(MINX,MINY,MINZ-ChartShift),Transform(MINX,MINY,MINZ-ChartShift)]
