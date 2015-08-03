@@ -21,12 +21,13 @@ var graph3d = (function() {
 
 	var cosA = 1, sinA = 0, cosB = 1, sinB = 0, cosC = 1, sinC = 0;
 	var MAXX = 1, MAXY = 1, MAXZ = 1, MINX = 1, MINY = 1, MINZ = 1;
+	var MaxDate = 1,MaxIv = 1,MaxMns =1,MinDate =1, MinIv = 1, MinMns = 1;
 	var ChartShift = 40
 	var cgy = 6;//количество градаций на оси OY
 	var cgz = 7;//количество градаций на оси OZ
 	var cgx = 10;//количество градаций на оси OX
 
-	var DZ = 5; //Количество градаций по оси Z
+	var DZ = 12; //Количество градаций по оси Z
  
 	var zoom = 1.2; //значение приближения - отдаления
 
@@ -35,6 +36,8 @@ var graph3d = (function() {
 	var DATA = []; //Данные не тронутые злым гением, вытянутые из json
 	var Data = []; //Данные, измененные для прорисовки
 	
+	var ChartBorederColor = '#888888'
+
 	function toRadians (angle) { return angle * (Math.PI / 180); }
 	function Zoom(z) {
 		zoom = z;
@@ -80,11 +83,11 @@ var graph3d = (function() {
 	}
 	function DataFunction(d)
 	{
-
-		var D = MAXX - d;
+		var D = (MaxDate - curDate) - d;
 		var W = 0;
 		var M = 0;
 		var Y = 0;
+		console.log(D);
 		while (D > 365)
 		{
 			D -= 365;
@@ -106,7 +109,10 @@ var graph3d = (function() {
 		}
 		if (W > 0)
 			return ''+W+'W';
+
 		return ''+D+'d'
+		
+		
 	}
 	function Init() {
 
@@ -288,15 +294,15 @@ var graph3d = (function() {
 		var svg = DrawPolygon([[MINX,MINY,MINZ-ChartShift],[MAXX,MINY,MINZ-ChartShift],[MAXX,MAXY,MINZ-ChartShift],[MINX,MAXY,MINZ-ChartShift]],'chart');			
 		svg.attr('id', 'chartOX');
 		svg.attr('fill','url(#GraphSvgGrad)');
-		svg.attr('stroke','#E2E2E2')
+		svg.attr('stroke',ChartBorederColor)
 		svg = DrawPolygon([[MINX,MINY-ChartShift,MINZ],[MAXX,MINY-ChartShift,MINZ],[MAXX,MINY-ChartShift,MAXZ],[MINX,MINY-ChartShift,MAXZ]],'chart');
 		svg.attr('id', 'chartOZ');
 		svg.attr('fill','url(#GraphSvgGrad)');
-		svg.attr('stroke','#E2E2E2')
+		svg.attr('stroke',ChartBorederColor)
 		svg = DrawPolygon([[MINX-ChartShift,MINY,MINZ],[MINX-ChartShift,MINY,MAXZ],[MINX-ChartShift,MAXY,MAXZ],[MINX-ChartShift,MAXY,MINZ]],'chart');
 		svg.attr('id', 'chartOY');
 		svg.attr('fill','url(#GraphSvgGrad)');
-		svg.attr('stroke','#E2E2E2')
+		svg.attr('stroke',ChartBorederColor)
 
 		//создание линий, которые будут проекциями на чарты
 		var p = [Transform(MINX,MINY,MINZ-ChartShift),Transform(MINX,MINY,MINZ-ChartShift)]
@@ -338,6 +344,7 @@ var graph3d = (function() {
 		//левая ось OY
 		var cg = cgy;
 		var dc = (MAXY - MINY)/cg;
+		console.log(MAXY);
 		for (var i = 0; i <= cg; i+=1) {
 
 			var p1 = Transform( MINX - ChartShift, MINY + dc*i, MAXZ + dist + distCh);
@@ -365,7 +372,7 @@ var graph3d = (function() {
 			.attr('stroke-width',1)
 			.attr('class', 'lineAxis')
 			.attr('fill','none')
-			.attr('stroke','white')
+			.attr('stroke',ChartBorederColor)
 		
 
 		//правая ось OY
@@ -398,7 +405,7 @@ var graph3d = (function() {
 			.attr('stroke-width',1)
 			.attr('class', 'lineAxis')
 			.attr('fill','none')
-			.attr('stroke','white')
+			.attr('stroke',ChartBorederColor)
 		
 
 		//ось OZ
@@ -422,7 +429,7 @@ var graph3d = (function() {
 					.attr('y',pt[1])
 					.attr('fill',color)
 					.attr('font-size',10)
-					.text((dc*i + MINZ).toFixed(2) )
+					.text(((MaxMns - MinMns)*i/cg + MinMns).toFixed(2) )
 		}
 		var svg = d3.select('#GraphSvg');
 		var line =	svg.append('path')
@@ -432,7 +439,7 @@ var graph3d = (function() {
 			.attr('stroke-width',1)
 			.attr('class', 'lineAxis')
 			.attr('fill','none')
-			.attr('stroke','white')
+			.attr('stroke',ChartBorederColor)
 
 		//ось OX
 		d = ''
@@ -453,7 +460,8 @@ var graph3d = (function() {
 					.attr('y',p1[1])
 					.attr('fill',color)
 					.attr('font-size',10)
-					.text(DataFunction( (MINX + dc*i).toFixed(0) ) );
+					.text(DataFunction( (dc*i).toFixed(0) ) );
+					console.log(DataFunction( (dc*i).toFixed(0) ) );
 		}
 		var svg = d3.select('#GraphSvg');
 		var line =	svg.append('path')
@@ -463,7 +471,11 @@ var graph3d = (function() {
 			.attr('stroke-width',1)
 			.attr('class', 'lineAxis')
 			.attr('fill','none')
-			.attr('stroke','white')
+			.attr('stroke',ChartBorederColor)
+
+		
+
+
 
 	}
 	function DrawGraphic(obj) {
@@ -517,9 +529,12 @@ var graph3d = (function() {
 		}
 	}
 	function DrawData() {
+		console.log(Data);
 		for (var i = 1; i < Data.length; i += 1)
 			for (var j = 1; j < Data[i].length; j +=1 )
+			{
 				DrawPolygon([ Data[i][j],Data[i][j-1],Data[i-1][j-1],Data[i-1][j]  ],'polygon');
+			}
 		
 		for (var i = 0; i < Data.length; i += 1)
 			DrawLine(Data[i],'LineOZ');
@@ -824,20 +839,22 @@ var graph3d = (function() {
 		DATES = dates.concat()
 		IMPLIED_VOLATILITY = iv.concat()
 		MONEYNESS = mnss.concat();
+		console.log(DATES);
+		console.log(IMPLIED_VOLATILITY);
 		
-		var MaxDate = Math.max.apply(null, DATES) / (1000*3600*24);
-		var CurDate = ((new Date() ) / (1000*3600*24) ).toFixed(0)/1;
+		MaxDate = Math.max.apply(null, DATES) / (1000*3600*24);
+		MaxIv = Math.max.apply(null, IMPLIED_VOLATILITY);
+		MaxMns = Math.max.apply(null, MONEYNESS);
+		MinDate = Math.min.apply(null, DATES) / (1000*3600*24);
+		MinIv = Math.min.apply(null, IMPLIED_VOLATILITY);
+		MinMns = Math.min.apply(null, MONEYNESS);
+
+		curDate = ((new Date)/(1000*3600*24)).toFixed(0)/1
 		var arg = [];
 		for (var i = 0; i < DATES.length; i += 1) {
-			var p = [( (DATES[i])/(1000*3600*24) - CurDate ).toFixed(0)/1, IMPLIED_VOLATILITY[i], MONEYNESS[i]];
-			arg.concat([p)
+			var p = [( MaxDate-(DATES[i])/(1000*3600*24)).toFixed(0)/1, IMPLIED_VOLATILITY[i], MONEYNESS[i]];
+			arg.push(p);
 		}
-		
-		console.log(arg);
-		console.log(CurDate);
-
-
-
 
 		var Dates = [];
 		for (var i = 0; i < arg.length; i += 1)	{
@@ -859,17 +876,12 @@ var graph3d = (function() {
 			d[k] = d[k].sort( function(a,b){return a[2] - b[2]});
 
 
-		for (var i = 0; i < d.length; i+= 1)
-			for (var j = 0; j < d[i].length; j+=1)
-				d[i][j][2] = d[i][j][2]*3;
-
 		var MinZ = d[0][0][2]; var MaxZ = d[0][0][2];//нахождение максимального и минимального значения Z в выборке
 		for (var k = 0; k < d.length; k += 1)
 			for (var j = 0; j < d[k].length; j+=1) {
 				if (d[k][j][2] > MaxZ)	MaxZ = d[k][j][2]
 				if (d[k][j][2] < MinZ)	MinZ = d[k][j][2]				
 			}
-		console.log(MaxZ+' '+MinZ);
 
 		var dd = [];
 		var Dz = (MaxZ - MinZ)/DZ;
@@ -945,6 +957,12 @@ var graph3d = (function() {
 			dd.push(ddd);
 		}
 		Data = dd;
+
+		for (var i = 0; i < Data.length; i +=1)	{
+			for (var j = 0; j < Data[i].length; j +=1) {
+				Data[i][j][2] = Data[i][j][2]*3;
+			}
+		}
 
 		MAXX = Data[0][0][0]; MAXY = Data[0][0][1]; MAXZ = Data[0][0][2];
 		MINX = MAXX; MINY = MAXY; MINZ = MAXZ;
