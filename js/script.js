@@ -12,22 +12,23 @@ var graph3d = (function() {
 	var mousePosY = 0; //Текущая позиция мыши
 	var isDown = false; //Нажатость клавишы мыши
 
-	var curDate;
+	var curDate; //Текущая дата
 
-	var DATES= [];
-	var IMPLIED_VOLATILITY = [];
-	var MONEYNESS = [];
+	var DATES= []; // Исходные даты
+	var IMPLIED_VOLATILITY = [];  //Исходные IMPLIED_VOLATILITY
+	var MONEYNESS = []; //Исходные MONEYNESS
 
 
-	var cosA = 1, sinA = 0, cosB = 1, sinB = 0, cosC = 1, sinC = 0;
-	var MAXX = 1, MAXY = 1, MAXZ = 1, MINX = 1, MINY = 1, MINZ = 1;
-	var MaxDate = 1,MaxIv = 1,MaxMns =1,MinDate =1, MinIv = 1, MinMns = 1;
-	var ChartShift = 40
+	var cosA = 1, sinA = 0, cosB = 1, sinB = 0, cosC = 1, sinC = 0; //Текущие тригонометрические значения
+	var MAXX = 1, MAXY = 1, MAXZ = 1, MINX = 1, MINY = 1, MINZ = 1; //для оптимизации
+
+	var MaxDate = 1,MaxIv = 1,MaxMns =1,MinDate =1, MinIv = 1, MinMns = 1; //Минимальные и максимальные значения исходных данных
+	var ChartShift = 40 //Сдвиг чартов по соответстувющим осям
 	var cgy = 6;//количество градаций на оси OY
 	var cgz = 7;//количество градаций на оси OZ
 	var cgx = 10;//количество градаций на оси OX
 
-	var DZ = 4; //Количество градаций по оси Z
+	var DZ = 8; //Количество градаций по оси Z
  
 	var zoom = 1.2; //значение приближения - отдаления
 
@@ -36,13 +37,36 @@ var graph3d = (function() {
 	var DATA = []; //Данные не тронутые злым гением, вытянутые из json
 	var Data = []; //Данные, измененные для прорисовки
 	
-	var ChartBorederColor = '#888888'
+	var ChartBorederColor = '#888888' //Цвет границы чарта
 
-	function toRadians (angle) { return angle * (Math.PI / 180); }
-	function Zoom(z) {
-		zoom = z;
-		RotateScene(currx,curry,currz);
+	function Dist(x0,y0,x1,y1,x2,y2){
+		var d = Math.abs( (x2-x1)*(y0-y1) - (y2-y1)*(x0-x1) );
+		d = d/Math.sqrt( (x2-x1)*(x2-x1) + (y2-y1)*(y2-y1) ) ;
+		return d;
 	}
+	/**
+	 * Первод угла из градусов в радианы
+	 * @param  {int} angle) угол в градусах
+	 * @return {[type]}     угол в радианах
+	 */
+	function toRadians (angle) { return angle * (Math.PI / 180); }
+	/**
+	 * Задание зума изображения
+	 * @param {[type]} z значение зума
+	 */
+	function Zoom(z) {
+		var delta = 5*z/SvgHeight;
+		if ( (zoom + delta) > 0.6 ){
+			zoom = zoom + delta;
+			RotateScene(0,0,0);
+		}
+	}
+	/**
+	 * Превращает абсолютные координаты объекта в пригодные для отрисовки с учетом трехмерности и перспективы
+	 * @param {[float]} x координата
+	 * @param {[float]} y координата
+	 * @param {[float]} z координата
+	 */
 	function Transform(x,y,z) {
 		var xmin = 0; var xmax = SvgWidth;
 		var ymin = 0; var ymax = SvgHeight;
@@ -77,10 +101,18 @@ var graph3d = (function() {
 
 		return [xs*zoom + shiftx, ys*zoom + shifty, z4];
 	}
+	/**
+	 * изменяет цвет в зависимости от высоты точки
+	 * @param {[float]} y значение координаты у
+	 */
 	function ColorFunction(y) {
 		var c=d3.hsl( y, 0.5, 0.5).rgb();
 		return ("rgb("+parseInt(c.r)+","+parseInt(c.g)+","+parseInt(c.b)+")")
 	}
+	/**
+	 * Выдает дату в формате Число+Месяц/Год/Неделя/День
+	 * @param {[dloat]} d количество дней или координата х
+	 */
 	function DateFunction(d) {
 		var D = (MaxDate - curDate) - d;
 		var W = 0;
@@ -110,8 +142,10 @@ var graph3d = (function() {
 
 		return ''+D+'d'
 	}
+	/**
+	 * Проводит подготовку к отрисовке, создает свг, градиент и задает обработку событий мыши этого свг
+	 */
 	function Init() {
-
 		var svg = d3.select('#d3container')
 				.append('svg')
 				.attr('id','GraphSvg')
@@ -147,7 +181,8 @@ var graph3d = (function() {
 			.attr('fill','url(#GraphSvgGrad)')
 
 		//События мыши
-		document.getElementById("d3container").addEventListener("mousemove", function(e){
+		var container = document.getElementById("d3container");
+		container.addEventListener("mousemove", function(e){
 			e.preventDefault();
 			if (isDown) {//Поворот мышью
 				var dx = (mousePosX - e.clientX)/2;
@@ -159,18 +194,25 @@ var graph3d = (function() {
 				mousePosY = e.clientY;
 			}
 		})
-		document.getElementById("d3container").addEventListener("mouseup", function(e) {
-				isDown = false;//Сообщение об отжатии кнопки мыши
-			}
-		)
-		document.getElementById("d3container").addEventListener("mousedown", function(e) {
-				mousePosX = e.clientX; //Сообщение о нажатии мыши и запоминание текущих координат для задания угла поворота
-				mousePosY = e.clientY;
-				isDown = true;
-				e.preventDefault();
-			}
-		)
+		container.addEventListener("mouseup", function(e) {
+			isDown = false;//Сообщение об отжатии кнопки мыши
+		})
+		container.addEventListener("mousedown", function(e) {
+			mousePosX = e.clientX; //Сообщение о нажатии мыши и запоминание текущих координат для задания угла поворота
+			mousePosY = e.clientY;
+			isDown = true;
+			e.preventDefault();
+		})
+		container.addEventListener("wheel", function(e) {
+			Zoom(e.deltaY);
+			e.preventDefault ? e.preventDefault() : (e.returnValue = false);
+		})
 	}
+	/**
+	 * Находит все линии проходящие через точку и активирует соответствующие события
+	 * @param {[float]} p   точка, через которую проходят линии
+	 * @param {[string]} str  событие активации: hover, out
+	 */
 	function FindLines(p,str) {
 		var lines = document.getElementsByClassName('line');
 		var points = [];
@@ -190,6 +232,10 @@ var graph3d = (function() {
 			}
 		}
 	}
+	/**
+	 * Событие, которое вызывается при наведении на линию
+	 * @param {[descriptor]} line линия, над которой проводится действие
+	 */
 	function LineHover(line) {
 		var ID = line.getAttribute('id');
 		if ( ID == 'LineOX') {
@@ -203,11 +249,67 @@ var graph3d = (function() {
 			DrawGraphic(line)
 		}
 	}
+	/**
+	 * Событие, которое вызывается при потере фокуса на линии
+	 * @param {[descriptor]} line линия, над которой проводится действие
+	 */
 	function LineOut(line) {
 		line.setAttribute('stroke-opacity', 0);
 	}
 
+	function PolygonHover(Polygon,x,y) {
+		var p = Polygon.getAttribute('points').trim().split(' ');
+		var pt = [];
+		
+		PolygonOut(Polygon);
 
+		for (var i = 0; i < p.length; i += 3) {
+			var p1 = Transform(p[i],p[i+1],p[i+2]);
+			pt.push([p1[0],p1[1]]);
+		}
+
+		var dist = 1000;
+		var lindex1 = 0,l;
+		for (var i = 0; i < pt.length-1; i+=1) {
+			var p1 = pt[i];
+			var p2 = pt[i+1];
+			var d = Dist(x,y,p1[0],p1[1],p2[0],p2[1]);
+			if (d < dist) {
+				dist = d;
+				lindex1 = i;
+			}
+		}
+		
+		if ( (lindex1 > 0) && (lindex1 < 3) ) {
+			var d1 = Dist(x,y,pt[lindex1+1][0],pt[lindex1+1][1],pt[lindex1+2][0],pt[lindex1+2][1]);
+			var d2 = Dist(x,y,pt[lindex1-1][0],pt[lindex1-1][1],pt[lindex1][0],pt[lindex1][1]);
+			l = (d1 < d2) ? lindex1+1 : lindex1;
+		}
+		if ( lindex1 == 0 ) {
+			var d1 = Dist(x,y,pt[lindex1+1][0],pt[lindex1+1][1],pt[lindex1+2][0],pt[lindex1+2][1]);
+			var d2 = Dist(x,y,pt[3][0],pt[3][1],pt[4][0],pt[4][1]);
+			l = (d1 < d2) ? lindex1+1 : lindex1;	
+		}
+		if ( lindex1 == 3 ) {
+			var d1 = Dist(x,y,pt[0][0],pt[0][1],pt[1][0],pt[1][1]);
+			var d2 = Dist(x,y,pt[lindex1-1][0],pt[lindex1-1][1],pt[lindex1][0],pt[lindex1][1]);
+			l = (d1 < d2) ? 0 : lindex1;	
+		}
+		FindLines([p[l*3],p[1+ l*3],p[2+ l*3]],'hover');
+	}
+	function PolygonOut(Polygon) {
+		var p = Polygon.getAttribute('points').trim().split(' ');
+		for (var i = 0; i < p.length; i+=3) {
+			FindLines([p[i],p[i+1],p[i+2]],'out');
+		}
+	}
+	/**
+	 * Отрисовка точки
+	 * @param {[float]} x  координата x
+	 * @param {[float]} y  координата y
+	 * @param {[float]} z  координата z
+	 * @param {[string]} rr показывает реальная точка или полученная при аппроксимации
+	 */
 	function DrawPoint(x,y,z,rr) {
 		var p = Transform(x,y,z);
 		var svg = d3.select('#GraphSvg')
@@ -221,22 +323,25 @@ var graph3d = (function() {
 			.attr('fill','yellow')
 			.attr('r',4)
 
-			.on('mouseover',function() {
+			.on('mouseover',function() {//вывод текущих координат точки и поиск линий содержащих эту точку для срабатывания события hover
 				var point = [ this.getAttribute('x1'), this.getAttribute('y1'), this.getAttribute('z1')];
 				FindLines(point,'hover');
-				var svg = d3.select('#GraphSvg');
-				var label = svg.select('#DateLabel')
-					label.text('Expiration date: '+ DateFunction(this.getAttribute('x1')) )
-				label = svg.select('#IvLabel')
-					label.text('Imployed volatility: '+ (this.getAttribute('y1')/1).toFixed(2) )
-				label = svg.select('#MoneynessLabel')
-					label.text('Moneyness: '+ (this.getAttribute('z1')/3).toFixed(2) )
+				
 
+				//Вывод координат точки в лейблы
+				var svg = d3.select('#GraphSvg');
+					svg.select('#DateLabel')
+					.text('Expiration date: '+ DateFunction(this.getAttribute('x1')) )
+					svg.select('#IvLabel')
+					.text('Imployed volatility: '+ (this.getAttribute('y1')/1).toFixed(2) )
+					svg.select('#MoneynessLabel')
+					.text('Moneyness: '+ (this.getAttribute('z1')/3).toFixed(2) )
 			})
-			.on('mouseout',function() {
+			.on('mouseout',function() {//поиск линий содержащих данную точку и срабатывание их события mouseout
 				var point = [ this.getAttribute('x1'), this.getAttribute('y1'), this.getAttribute('z1')];
 				FindLines(point,'out');
 			})
+		//Задание точке статуса реальной или аппроксимированной
 		if (rr == 'unreal')	{
 			ret.attr('fill','yellow')
 				.attr('real','unreal')
@@ -284,6 +389,11 @@ var graph3d = (function() {
 			})
 		}
 	}
+	/**
+	 * Отрисовка полигона
+	 * @param {[3dMassiv]} 	points 	точки по которым строится полигон
+	 * @param {[string]} 	cl     	класс создаваемого полигона (чарт или полигон для отображения данных)
+	 */
 	function DrawPolygon(points,cl)	{
 		var d = '';	var d1 = '';
 		var p;	var pt;
@@ -312,8 +422,21 @@ var graph3d = (function() {
 			.attr('class', cl)
 			.attr('fill',ColorFunction(maxy))
 			.attr('fill-opacity',0.7)
+
+		if (cl == 'polygon') {
+			ret.on('mousemove',function(){
+				var pos = d3.mouse(this);
+				PolygonHover(this,pos[0],pos[1],'hover');
+			})
+			ret.on('mouseout',function(){
+				PolygonOut(this);
+			})
+		}
 		return ret;
 	}
+	/**
+	 * Отрисовка чартов и линий-проекций
+	 */
 	function DrawCharts() {
 		//Создание полотен - чартов, стоящих по бокам от графика
 		var svg = DrawPolygon([[MINX,MINY,MINZ-ChartShift],[MAXX,MINY,MINZ-ChartShift],[MAXX,MAXY,MINZ-ChartShift],[MINX,MAXY,MINZ-ChartShift]],'chart');			
@@ -361,11 +484,15 @@ var graph3d = (function() {
 		//Создание осей с подписями
 		DrawAxis();
 	}
+	/**
+	 * Создание осей с подписями
+	 */
 	function DrawAxis() {
 		var d = '';//строка для занесения точек для отрисовки
 		var dist = 7; //длина черточки на каждой градации
 		var distCh = 5; //Расстояние от чарта
-		var color = 'white'
+		var color = 'white' //цвет подписи
+		
 		//левая ось OY
 		var cg = cgy;
 		var dc = (MAXY - MINY)/cg;
@@ -429,6 +556,20 @@ var graph3d = (function() {
 			.attr('class', 'lineAxis')
 			.attr('fill','none')
 			.attr('stroke',ChartBorederColor)
+
+		var p = Transform( MAXX, (MAXY - MINY), MINZ - ChartShift);
+		var text = svg.append('text')
+				.attr('id','OYLabel')
+				.attr('x',p[0])
+				.attr('y',p[1])
+				.attr('fill',color)
+				.attr('font-size',10)
+		var span = text.append('tspan')
+			span.text('Implied')
+		span = text.append('tspan')
+			span.attr('dy', '1em')
+			span.attr('dx', '-4em')
+			span.text('volatility')
 		
 
 		//ось OZ
@@ -510,12 +651,16 @@ var graph3d = (function() {
 				.attr('fill',color)
 				.attr('font-size',10)
 		var span = text.append('tspan')
-			span.text('Implied')
+			span.text('Expiration')
 		span = text.append('tspan')
 			span.attr('dy', '1em')
 			span.attr('dx', '-4em')
-			span.text('volatility')
+			span.text('date')
 	}
+	/**
+	 * Отрисовка проекции выделенной линии на чарт
+	 * @param {[descriptor]} obj  Дескриптор выделенной линии
+	 */
 	function DrawGraphic(obj) {
 		if (obj.id == 'LineOZ')
 		{
@@ -566,12 +711,13 @@ var graph3d = (function() {
 			graph.setAttribute('stroke', 'yellow')
 		}
 	}
+	/**
+	 * Отрисовка данных, подготовленных для отрисовки
+	 */
 	function DrawData() {
 		for (var i = 1; i < Data.length; i += 1)
 			for (var j = 1; j < Data[i].length; j +=1 )
-			{
 				DrawPolygon([ Data[i][j],Data[i][j-1],Data[i-1][j-1],Data[i-1][j]  ],'polygon');
-			}
 		
 		for (var i = 0; i < Data.length; i += 1)
 			DrawLine(Data[i],'LineOZ');
@@ -586,6 +732,9 @@ var graph3d = (function() {
 			for (var j = 0; j < Data[i].length; j += 1)
 				DrawPoint(Data[i][j][0],Data[i][j][1],Data[i][j][2],Data[i][j][3]);
 	}
+	/**
+	 * Отрисовка подписей для вывода текущих координат
+	 */
 	function DrawLabels() {
 		var p = [10,10];
 		var labelshift = 15;
@@ -617,6 +766,10 @@ var graph3d = (function() {
 	}
 
 
+
+	/**
+	 * Функция для отрисовки всех точек при повороте
+	 */
 	function RotatePoints() {
 		var svg = d3.select('#GraphSvg');
 		var points = GraphSvg.getElementsByClassName('point');
@@ -627,6 +780,9 @@ var graph3d = (function() {
 			a.setAttribute('cy',p[1]) ;
 		}
 	}
+	/**
+	 * Функция для отрисовки всех линий при повороте
+	 */
 	function RotateLines() {
 		var svg = d3.select('svg');
 		var lines = GraphSvg.getElementsByClassName('line');
@@ -647,16 +803,16 @@ var graph3d = (function() {
 			a.setAttribute('d', d);
 		}
 	}
+	/**
+	 * Функция для отрисовки всех полигонов при повороте
+	 */
 	function RotatePolygons() {
 		var svg = d3.select('svg');
 		var lines = GraphSvg.getElementsByClassName('polygon');
 		for (var i = 0; i < lines.length; i += 1)
 		{	
 			var a;
-			if (Math.sin(toRadians(curry)) > 0)
-				var a = lines[i];
-			else
-				var a = lines[lines.length-i-1];
+			var a = lines[i];
 
 			var points = a.getAttribute('points').split(' ');
 			a = lines[i];
@@ -678,10 +834,14 @@ var graph3d = (function() {
 			a.setAttribute('fill',ColorFunction(MaxY))	
 		}
 	}
+	/**
+	 * Функция для отрисовки чартов при повороте
+	 */
 	function RotateCharts()	{
 		var Chart;
 		var p;
 		
+		//Поворот чартов
 		Chart = d3.select('#chartOX');
 		if (Math.cos(toRadians(curry)) > 0)
 			p = [Transform(MINX,MINY,MINZ-ChartShift),Transform(MAXX,MINY,MINZ-ChartShift),Transform(MAXX,MAXY,MINZ-ChartShift),Transform(MINX,MAXY,MINZ-ChartShift)];
@@ -700,6 +860,7 @@ var graph3d = (function() {
 		p = [Transform(MINX,MINY-ChartShift,MINZ),Transform(MAXX,MINY-ChartShift,MINZ),Transform(MAXX,MINY-ChartShift,MAXZ),Transform(MINX,MINY-ChartShift,MAXZ)];
 		Chart.attr('d','M'+p[0][0]+' '+p[0][1]+'L'+p[1][0]+' '+p[1][1]+'L'+p[2][0]+' '+p[2][1]+'L'+p[3][0]+' '+p[3][1]+'L'+p[0][0]+' '+p[0][1]);
 		
+		//Поворот проекций на чартах
 		var Graph = d3.select('#GraphOX');
 		p = Graph.attr('points').split(' ');
 		var points = '';
@@ -728,6 +889,13 @@ var graph3d = (function() {
 
 		RotateAxis();
 	}
+
+	/**
+	 * вызывается при повороте сцены
+	 * @param {[type]} rx поворот по оси х в градусах
+	 * @param {[type]} ry поворот по оси у в градусах
+	 * @param {[type]} rz поворот по оси z в градусах
+	 */
 	function RotateScene(rx,ry,rz) {
 		if ( (currx >= -90 || rx > 0) && (currx <= 0 || rx < 0) ) // Ограничение на движение по оси OX
 			currx = currx + rx;
@@ -745,9 +913,11 @@ var graph3d = (function() {
 		RotateLines();
 		RotatePoints();
 	}
+	/**
+	 * Отрисовка осей с подписями при повороте сцены
+	 */
 	function RotateAxis() {
 		var d = '';//строка для занесения точек для отрисовки
-		var d1 = '';
 		var dist = 7; //длина черточки на каждой градации
 		var distCh = 5; //Расстояние от чарта
 		var txtmargin = 0;
@@ -884,16 +1054,6 @@ var graph3d = (function() {
 			.attr('d',d)
 		var p;
 
-		if (sinB > 0)
-			p = Transform( MAXX +70, MINY - ChartShift, (MINZ + MAXZ )/2 );
-		else 
-			p = Transform( MINX -70, MINY - ChartShift, (MINZ + MAXZ )/2 );
-		
-
-		var OZLabel = document.getElementById('OZLabel')
-			OZLabel.setAttribute('x', p[0]);
-			OZLabel.setAttribute('y', p[1])
-
 		//Ось OX
 		d = '';
 		cg = cgx;
@@ -929,18 +1089,47 @@ var graph3d = (function() {
 		var svg = d3.select('#AxisGraphOX')
 			.attr('d',d)
 
+		//RotateLabels (Date, moneyness, IV)
+		if (sinB > 0)
+			if ( cosB > 0)
+				p = Transform( MAXX + 70, (MAXY - MINY)/2 + 25, MINZ - ChartShift);
+			else
+				p = Transform( MINX - ChartShift, (MAXY - MINY)/2 + 25, MINZ - 70);
+		else
+			if ( cosB > 0)
+				p = Transform( MAXX + ChartShift, (MAXY - MINY)/2 + 25, MAXZ + 70);
+			else
+				p = Transform( MINX - 70, (MAXY - MINY)/2 + 25, MAXZ + ChartShift);
+		var OYLabel = document.getElementById('OYLabel')
+			OYLabel.setAttribute('x', p[0]);
+			OYLabel.setAttribute('y', p[1])
+
+
+		if (sinB > 0)
+			p = Transform( MAXX +70, MINY - ChartShift, (MINZ + MAXZ )/2 );
+		else 
+			p = Transform( MINX -70, MINY - ChartShift, (MINZ + MAXZ )/2 );
+		var OZLabel = document.getElementById('OZLabel')
+			OZLabel.setAttribute('x', p[0]);
+			OZLabel.setAttribute('y', p[1])
+
+
 		if (cosB > 0)
 			p = Transform( (MAXX - MINX)/2 , MINY - ChartShift, MAXZ + 70 );
 		else 
 			p = Transform( (MAXX - MINX)/2 , MINY - ChartShift, MINZ - 70 );		
-
 		var OXLabel = document.getElementById('OXLabel')
 			OXLabel.setAttribute('x', p[0]);
 			OXLabel.setAttribute('y', p[1])
 	}
 
-
-	function TransformData1(dates, iv, mnss) {
+	/**
+	 * превращает исходные данные в пригодные для отрисовки
+	 * @param {array} dates массив дат
+	 * @param {array} iv    массив implied volatility
+	 * @param {array} mnss  моссив значений moneyness
+	 */
+	function TransformData(dates, iv, mnss) {
 		DATES = dates.concat()
 		IMPLIED_VOLATILITY = iv.concat()
 		MONEYNESS = mnss.concat();
@@ -969,13 +1158,13 @@ var graph3d = (function() {
 		while (i--) //Удаление повторяющихся дат
 	    	if (Dates[i] == Dates[i-1])
 	        	Dates.splice(i, 1);
-		
+
 		var d = [];
 
 		
 		for (var k = 0; k < Dates.length; k += 1 )// распределение выборки по датам
 			d[k] = arg.filter( function(item){ if (item[0] == Dates[k]) return item; });
-		for (var k = 0; k < Dates.length; k += 1 )// массивов по оси Z
+		for (var k = 0; k < Dates.length; k += 1 )// сортировка массивов по оси Z
 			d[k] = d[k].sort( function(a,b){return a[2] - b[2]});
 
 
@@ -1082,6 +1271,10 @@ var graph3d = (function() {
 				if ( MINZ > Data[i][j][2])	MINZ = Data[i][j][2];
 			}
 	}
+	/**
+	 * получает данные 	для 	отрисовки из жсон
+	 * @param {string} 	url 	путь к файлу .json
+	 */
 	function GetData(url) {
 		var a = document.getElementById('d3container');
 		if (a != null) {
@@ -1099,16 +1292,14 @@ var graph3d = (function() {
 				dates.push(date);
 				implied_volatility.push((data[i].implied_volatility)/1);
 				moneyness.push((data[i].moneyness)/1);
-
 			}
 
 			graph3d.Init();
-			graph3d.TransformData1(dates, implied_volatility, moneyness);
+			graph3d.TransformData(dates, implied_volatility, moneyness);
 			graph3d.DrawCharts();
 			DrawLabels();
 			graph3d.DrawData();
 			graph3d.RotateScene(-30,-45,0)
-
 		});
 	}
 
@@ -1124,7 +1315,7 @@ var graph3d = (function() {
 		DrawCharts:DrawCharts,
 		DrawData:DrawData,
 		GetData:GetData,
-		TransformData1:TransformData1
+		TransformData:TransformData
 	};
 }());
 
