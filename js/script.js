@@ -38,10 +38,30 @@ var graph3d = (function() {
 	var Data = []; //Данные, измененные для прорисовки
 	
 	var ChartBorederColor = '#888888' //Цвет границы чарта
-
+	/**
+	 * Находит расстояние от точки до прямой, заданной двумя точками
+	 * @param {[float]} x0 Координата точки, от которой считаем расстояние
+	 * @param {[float]} y0 Координата точки, от которой считаем расстояние
+	 * @param {[float]} x1 координата точки задающей прямую
+	 * @param {[float]} y1 координата точки задающей прямую
+	 * @param {[float]} x2 координата точки задающей прямую
+	 * @param {[float]} y2 координата точки задающей прямую
+	 */
 	function Dist(x0,y0,x1,y1,x2,y2){
-		var d = Math.abs( (x2-x1)*(y0-y1) - (y2-y1)*(x0-x1) );
+		var d;
+		d = Math.abs( (x2-x1)*(y0-y1) - (y2-y1)*(x0-x1) );
 		d = d/Math.sqrt( (x2-x1)*(x2-x1) + (y2-y1)*(y2-y1) ) ;
+		return d;
+	}
+	/**
+	 * возвращает расстояние между двумя точками
+	 * @param {[float]} x0 координата первой точки
+	 * @param {[float]} y0 координата первой точки
+	 * @param {[float]} x1 координата второй точки
+	 * @param {[float]} y1 координата второй точки
+	 */
+	function Dist2(x0,y0,x1,y1){
+		var d = Math.sqrt( (x0-x1)*(x0-x1) + (y0-y1)*(y0-y1)  );
 		return d;
 	}
 	/**
@@ -256,7 +276,12 @@ var graph3d = (function() {
 	function LineOut(line) {
 		line.setAttribute('stroke-opacity', 0);
 	}
-
+	/**
+	 * выполняется при наведении на полигон для подсвечивания соответствующих линий
+	 * @param {[descriptor]} 	Polygon полигон, над которым происходит действие
+	 * @param {[float]} 		x       координата курсора
+	 * @param {[dloat]} 		y       координата курсора
+	 */
 	function PolygonHover(Polygon,x,y) {
 		var p = Polygon.getAttribute('points').trim().split(' ');
 		var pt = [];
@@ -297,6 +322,10 @@ var graph3d = (function() {
 		}
 		FindLines([p[l*3],p[1+ l*3],p[2+ l*3]],'hover');
 	}
+	/**
+	 * выполняется при убирании курсора с полигона
+	 * @param {[descriptor]} Polygon полигон, над которым происходит действие
+	 */
 	function PolygonOut(Polygon) {
 		var p = Polygon.getAttribute('points').trim().split(' ');
 		for (var i = 0; i < p.length; i+=3) {
@@ -381,11 +410,29 @@ var graph3d = (function() {
 			.attr('fill','none')
 		line.attr('id',ID)
 		if ( (ID == 'LineOX') || (ID == 'LineOZ') )	{
-			line.on('mouseover', function(){
-				LineHover(this)
+			line.on('mousemove', function(){
+				var pos = d3.mouse(this);
+				var p = this.getAttribute('points').trim().split(' ');
+				var pt = [];
+				var index = 0, index2 = 0;
+				var dist = 1000, dist2 = 999;
+				var d = [];
+				for (var i = 0; i < p.length; i+=3) {
+					pt = Transform(p[i],p[i+1],p[i+2]);
+					d.push( [ Dist2(pos[0],pos[1], pt[0],pt[1]), i ] );
+				}
+				d.sort( function(a,b){return a[0] - b[0]});
+				var i2 = d[0][1];
+				var i1 = d[1][1];
+				FindLines([p[i1],p[i1+1],p[i1+2]],'out');
+				FindLines([p[i2],p[i2+1],p[i2+2]],'hover');
 			})
 			.on('mouseout', function(){
-				LineOut(this)
+				var pos = d3.mouse(this);
+				var p = this.getAttribute('points').trim().split(' ');
+				for (var i = 0; i < p.length; i+=3) {
+					FindLines([p[i],p[i+1],p[i+2]],'out');
+				}
 			})
 		}
 	}
